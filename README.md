@@ -1,6 +1,39 @@
 # cloudflare-kubernetes-operator
 // TODO(user): Add simple overview of use/purpose
 
+kubebuilder init --domain networking.k8s.io --license none --owner "Tom Plant" --repo github.com/pl4nty/cloudflare-kubernetes-gateway 
+kubebuilder create api --group gateway --version v1 --kind Gateway --plural gateways
+kubebuilder create api --group gateway --version v1 --kind HTTPRoute --plural httproutes
+
+// TODO(user): Add simple overview of use/purpose
+
+cloudflare-kubernetes-gateway
+Implements the Kubernetes Gateway API with Cloudflare Tunnels
+
+gatewayclass
+str account id and token via secret in spec.parametersRef
+
+gateway
+str tunnel name
+status tunnel-id
+support via policy? originRequest, bool warp-routing
+
+finalizer and todelete set? delete via ID
+
+ID inside status:
+  get by ID:
+    if name different, patch it
+all else, create and set ID
+
+route
+hostname, service
+opt: originRequest (object with any props), path
+rules.filters.extensionRef
+
+each route:
+  backendRef x hostname map:
+    add ingress
+
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use
 
