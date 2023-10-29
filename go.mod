@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/cloudflare/cloudflare-go v0.80.0
-	github.com/onsi/ginkgo/v2 v2.11.0
+	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.27.10
 	k8s.io/api v0.28.3
 	k8s.io/apimachinery v0.28.3
