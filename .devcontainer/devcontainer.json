@@ -5,7 +5,7 @@
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/go:1-1.21-bookworm",
 	"features": {
-		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
 			"dockerDashComposeVersion": "v2"
 		},
 		"ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {

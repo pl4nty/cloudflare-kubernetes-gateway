@@ -22,7 +22,8 @@ import (
 // GatewayReconciler reconciles a Gateway object
 type GatewayReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme    *runtime.Scheme
+	Namespace string
 }
 
 func (r *GatewayReconciler) InitCloudflareApi(ctx context.Context, gateway gw.Gateway) (*cloudflare.ResourceContainer, *cloudflare.API, error) {
@@ -34,14 +35,14 @@ func (r *GatewayReconciler) InitCloudflareApi(ctx context.Context, gateway gw.Ga
 		return nil, nil, err
 	}
 
-	if gatewayClass.Spec.ControllerName == "cloudflare-kubernetes-controller" {
+	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-controller" {
 		return nil, nil, errors.New("gateway controllerName not allowed")
 	}
 
 	var parameters core.Secret
 	var ref = types.NamespacedName{
 		Namespace: string(*gatewayClass.Spec.ParametersRef.Namespace),
-		Name:      string(*gatewayClass.Spec.ParametersRef.Namespace),
+		Name:      gatewayClass.Spec.ParametersRef.Name,
 	}
 	if err := r.Get(ctx, ref, &parameters); err != nil {
 		log.Error(err, "unable to fetch GatewayClass ParameterRef Secret")
@@ -58,9 +59,12 @@ func (r *GatewayReconciler) InitCloudflareApi(ctx context.Context, gateway gw.Ga
 	return account, api, nil
 }
 
-//+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get;list;watch;update;patch
+//+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/finalizers,verbs=update
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -105,12 +109,12 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				log.Error(err, "unable to get Tunnel from Cloudflare API")
 				return ctrl.Result{}, err
 			}
-			
+
 			if tunnelInfo.Count == 0 {
 				log.Info("deleted Gateway has no tunnel, skipping")
 				return ctrl.Result{}, nil
 			}
-			
+
 			log.Info("deleting Tunnel")
 			api.DeleteTunnel(ctx, account, tunnel[0].ID)
 
@@ -137,18 +141,23 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 	if info.Count > 0 {
+		// patch unsupported with api_token
+		// if tunnels[0].Name != gateway.Name {
+		// log.Info("updating Tunnel name")
 		// API uses /cfd_tunnel/{id}, but SDK uses /cfd_tunnel? might be broken
-		log.Info("updating Tunnel name")
-		_, err := api.UpdateTunnel(ctx, account, cloudflare.TunnelUpdateParams{Name: gateway.Name})
-		if err != nil {
-			log.Error(err, "unable to update Tunnel")
-			return ctrl.Result{}, err
-		}
+		// _, err := api.UpdateTunnel(ctx, account, cloudflare.TunnelUpdateParams{Name: gateway.Name})
+		// if err != nil {
+		// 	log.Error(err, "unable to update Tunnel")
+		// 	return ctrl.Result{}, err
+		// }
+		// }
+
 		return ctrl.Result{}, nil
 	}
 
 	log.Info("creating Tunnel for Gateway")
-	tunnel, err := api.CreateTunnel(ctx, account, cloudflare.TunnelCreateParams{Name: gateway.Name, ConfigSrc: "cloudflare"})
+	// secret is required, despite optional in docs and seemingly only needed for ConfigSrc=local
+	tunnel, err := api.CreateTunnel(ctx, account, cloudflare.TunnelCreateParams{Name: gateway.Name, ConfigSrc: "cloudflare", Secret: "AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg="})
 	if err != nil {
 		log.Error(err, "unable to create Tunnel")
 		return ctrl.Result{}, err
@@ -163,7 +172,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	labels := map[string]string{"cfargotunnel.com/name": gateway.Name}
 	deployment := apps.Deployment{
 		ObjectMeta: v1.ObjectMeta{
-			Name: gateway.Name,
+			Name:      gateway.Name,
 			Namespace: gateway.Namespace,
 		},
 		Spec: apps.DeploymentSpec{

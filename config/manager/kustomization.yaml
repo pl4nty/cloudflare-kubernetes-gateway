@@ -1,2 +1,8 @@
 resources:
 - manager.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- digest: sha256:a640aafbac506ca4548bfb200f3c06276c57e2f4686664de7296f1665dbe01c3
+  name: controller
+  newName: ghcr.io/pl4nty/cloudflare-kubernetes-gateway
