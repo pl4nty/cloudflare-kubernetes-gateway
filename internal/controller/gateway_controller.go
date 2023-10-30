@@ -2,8 +2,10 @@ package controller
 
 import (
 	"context"
-	"errors"
 
+	"github.com/cloudflare/cloudflare-go"
+	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -11,12 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	apps "k8s.io/api/apps/v1"
-	core "k8s.io/api/core/v1"
 	gw "sigs.k8s.io/gateway-api/apis/v1beta1"
-
-	"github.com/cloudflare/cloudflare-go"
 )
 
 // GatewayReconciler reconciles a Gateway object
@@ -24,39 +21,6 @@ type GatewayReconciler struct {
 	client.Client
 	Scheme    *runtime.Scheme
 	Namespace string
-}
-
-func (r *GatewayReconciler) InitCloudflareApi(ctx context.Context, gateway gw.Gateway) (*cloudflare.ResourceContainer, *cloudflare.API, error) {
-	log := log.FromContext(ctx)
-
-	var gatewayClass gw.GatewayClass
-	if err := r.Get(ctx, types.NamespacedName{Name: string(gateway.Spec.GatewayClassName)}, &gatewayClass); err != nil {
-		log.Error(err, "unable to fetch GatewayClass")
-		return nil, nil, err
-	}
-
-	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-controller" {
-		return nil, nil, errors.New("gateway controllerName not allowed")
-	}
-
-	var parameters core.Secret
-	var ref = types.NamespacedName{
-		Namespace: string(*gatewayClass.Spec.ParametersRef.Namespace),
-		Name:      gatewayClass.Spec.ParametersRef.Name,
-	}
-	if err := r.Get(ctx, ref, &parameters); err != nil {
-		log.Error(err, "unable to fetch GatewayClass ParameterRef Secret")
-		return nil, nil, err
-	}
-
-	account := cloudflare.AccountIdentifier(string(parameters.Data["ACCOUNT_ID"]))
-	api, err := cloudflare.NewWithAPIToken(string(parameters.Data["TOKEN"]))
-	if err != nil {
-		log.Error(err, "unable to create Cloudflare API")
-		return nil, nil, err
-	}
-
-	return account, api, nil
 }
 
 //+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get;list;watch;update;patch
@@ -75,72 +39,88 @@ func (r *GatewayReconciler) InitCloudflareApi(ctx context.Context, gateway gw.Ga
 func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	var gateway gw.Gateway
-	if err := r.Get(ctx, req.NamespacedName, &gateway); err != nil {
+	gateway := &gw.Gateway{}
+	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
 		log.Error(err, "unable to fetch Gateway")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	finalizerName := "cfargotunnel.com/finalizer"
-
-	// examine DeletionTimestamp to determine if object is under deletion
 	if gateway.ObjectMeta.DeletionTimestamp.IsZero() {
-		// The object is not being deleted, so if it does not have our finalizer,
-		// then lets add the finalizer and update the object. This is equivalent
-		// registering our finalizer.
-		if !controllerutil.ContainsFinalizer(&gateway, finalizerName) {
-			controllerutil.AddFinalizer(&gateway, finalizerName)
-			if err := r.Update(ctx, &gateway); err != nil {
+		if !controllerutil.ContainsFinalizer(gateway, finalizerName) {
+			controllerutil.AddFinalizer(gateway, finalizerName)
+			if err := r.Update(ctx, gateway); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
-		// The object is being deleted
-		if controllerutil.ContainsFinalizer(&gateway, finalizerName) {
-			// our finalizer is present, so lets handle any external dependency
-			account, api, err := r.InitCloudflareApi(ctx, gateway)
+		if controllerutil.ContainsFinalizer(gateway, finalizerName) {
+			if err := r.Delete(ctx, &apps.Deployment{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      gateway.Name,
+					Namespace: gateway.Namespace,
+				},
+			}); err != nil {
+				log.Error(err, "unable to delete Deployment")
+			}
+
+			account, api, err := InitCloudflareApi(ctx, r.Client, string(gateway.Spec.GatewayClassName))
 			if err != nil {
 				log.Error(err, "unable to initialize Cloudflare API")
 				return ctrl.Result{}, err
 			}
 
-			tunnel, tunnelInfo, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{Name: gateway.Name})
+			tunnel, tunnelInfo, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{IsDeleted: cloudflare.BoolPtr(false), Name: gateway.Name})
 			if err != nil {
 				log.Error(err, "unable to get Tunnel from Cloudflare API")
 				return ctrl.Result{}, err
 			}
 
-			if tunnelInfo.Count == 0 {
-				log.Info("deleted Gateway has no tunnel, skipping")
-				return ctrl.Result{}, nil
+			if tunnelInfo.Count > 0 {
+				log.Info("deleting Tunnel")
+				if err := api.DeleteTunnel(ctx, account, tunnel[0].ID); err != nil {
+					log.Error(err, "unable to delete Deployment")
+					return ctrl.Result{}, err
+				}
+			} else {
+				log.Info("deleted Gateway has no tunnel")
 			}
 
-			log.Info("deleting Tunnel")
-			api.DeleteTunnel(ctx, account, tunnel[0].ID)
-
-			// remove our finalizer from the list and update it.
-			controllerutil.RemoveFinalizer(&gateway, finalizerName)
-			if err := r.Update(ctx, &gateway); err != nil {
+			controllerutil.RemoveFinalizer(gateway, finalizerName)
+			if err := r.Update(ctx, gateway); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
-		// Stop reconciliation as the item is being deleted
 		return ctrl.Result{}, nil
 	}
 
-	account, api, err := r.InitCloudflareApi(ctx, gateway)
+	account, api, err := InitCloudflareApi(ctx, r.Client, string(gateway.Spec.GatewayClassName))
 	if err != nil {
 		log.Error(err, "unable to initialize Cloudflare API")
 		return ctrl.Result{}, err
 	}
 
-	_, info, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{Name: gateway.Name})
+	tunnels, info, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{IsDeleted: cloudflare.BoolPtr(false), Name: gateway.Name})
 	if err != nil {
 		log.Error(err, "unable to get Tunnel from Cloudflare API")
 		return ctrl.Result{}, err
 	}
-	if info.Count > 0 {
+
+	tunnel := cloudflare.Tunnel{}
+	if info.Count == 0 {
+		log.Info("creating Tunnel for Gateway")
+		// secret is required, despite optional in docs and seemingly only needed for ConfigSrc=local
+		tunnel, err = api.CreateTunnel(ctx, account, cloudflare.TunnelCreateParams{
+			Name:      gateway.Name,
+			ConfigSrc: "cloudflare",
+			Secret:    "AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg=",
+		})
+		if err != nil {
+			log.Error(err, "unable to create Tunnel")
+			return ctrl.Result{}, err
+		}
+	} else {
 		// patch unsupported with api_token
 		// if tunnels[0].Name != gateway.Name {
 		// log.Info("updating Tunnel name")
@@ -151,16 +131,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// 	return ctrl.Result{}, err
 		// }
 		// }
-
-		return ctrl.Result{}, nil
-	}
-
-	log.Info("creating Tunnel for Gateway")
-	// secret is required, despite optional in docs and seemingly only needed for ConfigSrc=local
-	tunnel, err := api.CreateTunnel(ctx, account, cloudflare.TunnelCreateParams{Name: gateway.Name, ConfigSrc: "cloudflare", Secret: "AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg="})
-	if err != nil {
-		log.Error(err, "unable to create Tunnel")
-		return ctrl.Result{}, err
+		log.Info("tunnel already exists")
+		tunnel = tunnels[0]
 	}
 
 	token, err := api.GetTunnelToken(ctx, account, tunnel.ID)
@@ -169,11 +141,19 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	if err := r.Get(ctx, types.NamespacedName{
+		Namespace: gateway.Namespace,
+		Name:      gateway.Name,
+	}, &apps.Deployment{}); err == nil {
+		log.Info("tunnel deployment already exists")
+		return ctrl.Result{}, nil
+	}
+
 	labels := map[string]string{"cfargotunnel.com/name": gateway.Name}
 	deployment := apps.Deployment{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      gateway.Name,
 			Namespace: gateway.Namespace,
+			Name:      gateway.Name,
 		},
 		Spec: apps.DeploymentSpec{
 			Selector: &v1.LabelSelector{MatchLabels: labels},
