@@ -29,11 +29,27 @@ rules:
   resources:
   - gatewayclasses
   verbs:
+  - create
+  - delete
   - get
   - list
   - patch
   - update
   - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gatewayclasses/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gatewayclasses/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - gateway.networking.k8s.io
   resources:

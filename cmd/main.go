@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	gw "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gw "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/pl4nty/cloudflare-kubernetes-gateway/internal/controller"
 	//+kubebuilder:scaffold:imports
@@ -90,6 +90,13 @@ func main() {
 		Namespace: clusterResourceNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "HTTPRoute")
+		os.Exit(1)
+	}
+	if err = (&controller.GatewayClassReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "GatewayClass")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	gw "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func InitCloudflareApi(ctx context.Context, c client.Client, gatewayClassName string) (*cloudflare.ResourceContainer, *cloudflare.API, error) {

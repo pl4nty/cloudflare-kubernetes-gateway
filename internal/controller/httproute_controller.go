@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	gw "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // HTTPRouteReconciler reconciles a HTTPRoute object
@@ -91,7 +91,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					})
 
 					// these need zone ID instead of account ID
-					// lookup by hostname substring? 
+					// lookup by hostname substring?
 					// content := fmt.Sprintf("%s.cfargotunnel.com", tunnel.ID)
 					// _, info, _ := api.ListDNSRecords(ctx, account, cloudflare.ListDNSRecordsParams{
 					// 	Proxied: cloudflare.BoolPtr(true),

@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	gw "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // GatewayReconciler reconciles a Gateway object
@@ -45,32 +45,57 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	finalizerName := "cfargotunnel.com/finalizer"
+	// TODO Gateway conditions
+
+	// check if parent GatewayClass is ours and update finalizer
+	gatewayClass := &gw.GatewayClass{}
+	if err := r.Get(ctx, types.NamespacedName{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
+		log.Error(err, "unable to fetch GatewayClass")
+		return ctrl.Result{}, err
+	}
+	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-controller" {
+		return ctrl.Result{}, nil
+	}
+	gatewayClassFinalizer := "gateway-exists-finalizer.gateway.networking.k8s.io"
+	if !controllerutil.ContainsFinalizer(gatewayClass, gatewayClassFinalizer) {
+		controllerutil.AddFinalizer(gatewayClass, gatewayClassFinalizer)
+		if err := r.Update(ctx, gatewayClass); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	account, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
+	if err != nil {
+		log.Error(err, "unable to initialize Cloudflare API")
+		return ctrl.Result{}, err
+	}
+
+	// reconcile Gateway finalizer
+	gatewayFinalizer := "cfargotunnel.com/finalizer"
 	if gateway.ObjectMeta.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(gateway, finalizerName) {
-			controllerutil.AddFinalizer(gateway, finalizerName)
+		if !controllerutil.ContainsFinalizer(gateway, gatewayFinalizer) {
+			controllerutil.AddFinalizer(gateway, gatewayFinalizer)
 			if err := r.Update(ctx, gateway); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
-		if controllerutil.ContainsFinalizer(gateway, finalizerName) {
+		if controllerutil.ContainsFinalizer(gateway, gatewayFinalizer) {
+			// Gateway needs deletion
+			// TODO better identifiers
 			if err := r.Delete(ctx, &apps.Deployment{
 				ObjectMeta: v1.ObjectMeta{
-					Name:      gateway.Name,
 					Namespace: gateway.Namespace,
+					Name:      gateway.Name,
 				},
 			}); err != nil {
 				log.Error(err, "unable to delete Deployment")
 			}
 
-			account, api, err := InitCloudflareApi(ctx, r.Client, string(gateway.Spec.GatewayClassName))
-			if err != nil {
-				log.Error(err, "unable to initialize Cloudflare API")
-				return ctrl.Result{}, err
-			}
-
-			tunnel, tunnelInfo, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{IsDeleted: cloudflare.BoolPtr(false), Name: gateway.Name})
+			tunnel, tunnelInfo, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{
+				IsDeleted: cloudflare.BoolPtr(false),
+				Name:      gateway.Name,
+			})
 			if err != nil {
 				log.Error(err, "unable to get Tunnel from Cloudflare API")
 				return ctrl.Result{}, err
@@ -83,22 +108,29 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					return ctrl.Result{}, err
 				}
 			} else {
-				log.Info("deleted Gateway has no tunnel")
+				log.Info("Gateway under deletion has no tunnel")
 			}
 
-			controllerutil.RemoveFinalizer(gateway, finalizerName)
+			controllerutil.RemoveFinalizer(gateway, gatewayFinalizer)
 			if err := r.Update(ctx, gateway); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
-		return ctrl.Result{}, nil
-	}
+		// if GatewayClass has no other Gateways, remove its finalizer
+		gateways := &gw.GatewayList{Items: []gw.Gateway{{Spec: gw.GatewaySpec{GatewayClassName: gateway.Spec.GatewayClassName}}}}
+		if err := r.List(ctx, gateways); err != nil {
+			log.Error(err, "unable to fetch gateways")
+			return ctrl.Result{}, err
+		}
+		if len(gateways.Items) == 0 {
+			controllerutil.RemoveFinalizer(gatewayClass, gatewayClassFinalizer)
+			if err := r.Update(ctx, gatewayClass); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 
-	account, api, err := InitCloudflareApi(ctx, r.Client, string(gateway.Spec.GatewayClassName))
-	if err != nil {
-		log.Error(err, "unable to initialize Cloudflare API")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
 
 	tunnels, info, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{IsDeleted: cloudflare.BoolPtr(false), Name: gateway.Name})
