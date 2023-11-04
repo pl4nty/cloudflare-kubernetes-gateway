@@ -3,6 +3,6 @@ resources:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- digest: sha256:267355803c3a6d32cb354477baddfa9db3f10ab1fca08ad23191d8ef6c0c3152
+- digest: sha256:5d0bf20e3c2e8bf5c55cef83db6525a5924c4a34d58ff7a174289532f7b3efd6
   name: controller
   newName: ghcr.io/pl4nty/cloudflare-kubernetes-gateway
