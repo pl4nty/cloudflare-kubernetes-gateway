@@ -1,113 +1,42 @@
-# cloudflare-kubernetes-operator
-// TODO(user): Add simple overview of use/purpose
+# Cloudflare Kubernetes Gateway
 
-kubebuilder init --domain networking.k8s.io --license none --owner "Tom Plant" --repo github.com/pl4nty/cloudflare-kubernetes-gateway 
-kubebuilder create api --group gateway --version v1 --kind Gateway --plural gateways
-kubebuilder create api --group gateway --version v1 --kind HTTPRoute --plural httproutes
-
-// TODO(user): Add simple overview of use/purpose
-
-cloudflare-kubernetes-gateway
-Implements the Kubernetes Gateway API with Cloudflare Tunnels
-
-gatewayclass
-str account id and token via secret in spec.parametersRef
-
-gateway
-str tunnel name
-status tunnel-id
-support via policy? originRequest, bool warp-routing
-
-finalizer and todelete set? delete via ID
-
-ID inside status:
-  get by ID:
-    if name different, patch it
-all else, create and set ID
-
-route
-hostname, service
-opt: originRequest (object with any props), path
-rules.filters.extensionRef
-
-each route:
-  backendRef x hostname map:
-    add ingress
-
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+Manage Kubernetes ingress traffic with Cloudflare Tunnels via the [Gateway API](https://gateway-api.sigs.k8s.io/).
 
 ## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Running on the cluster
-1. Install Instances of Custom Resources:
-
-```sh
-kubectl apply -k config/samples/
+1. Install v1 or later of the Gateway API CRDs: `kubectl apply -k github.com/kubernetes-sigs/gateway-api//config/crd?ref=v1.0.0`
+2. Install cloudflare-kubernetes-gateway: `kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/default`
+3. [Find your Cloudflare account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/)
+3. [Create a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with the Account.Cloudflare Tunnel and DNS.Zone permissions
+4. Use them to create a Secret: `kubectl create secret -n cloudflare-kubernetes-gateway generic cloudflare --from-literal=ACCOUNT_ID=your-account-id --from-literal=TOKEN=your-token`
+5. Create a file containing your GatewayClass, then apply it with `kubectl apply -f file.yaml`:
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: cloudflare
+spec:
+  controllerName: github.com/pl4nty/cloudflare-kubernetes-controller
+  parametersRef:
+    group: ""
+    kind: Secret
+    namespace: cloudflare-kubernetes-gateway
+    name: cloudflare
 ```
+7. [Create Gateways and HTTPRoutes](https://gateway-api.sigs.k8s.io/guides/http-routing/) to start managing traffic!
 
-2. Build and push your image to the location specified by `IMG`:
+## Features
 
-```sh
-make docker-build docker-push IMG=<some-registry>/cloudflare-kubernetes-gateway:tag
-```
+The v1 Core spec is not yet supported, as some features (eg header-based routing) aren't available with Tunnels. The following features are supported:
 
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+* HTTPRoute hostname and path matching
+* HTTPRoute Service backendRefs without filtering or weighting
+* Gateway gatewayClassName and listeners only
+* GatewayClass Core fields
 
-```sh
-make deploy IMG=<some-registry>/cloudflare-kubernetes-gateway:tag
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller from the cluster:
-
-```sh
-make undeploy
-```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-### How it works
-This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
-
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
-which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
-
-### Test It Out
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
-
-### Modifying the API definitions
-If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
-
-```sh
-make manifests
-```
-
-**NOTE:** Run `make --help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
-
-## License
-
+<!-- * HTTPRoute Gateway parentRefs, without sectionName
+* HTTPRoute hostnames, but not listener filtering or precedence
+* HTTPRoute rule path match only
+* HTTPRoute backendRefs without filtering or weighting
+* Gateway gatewayClassName, listeners aren't validated
+* GatewayClass Core fields -->
