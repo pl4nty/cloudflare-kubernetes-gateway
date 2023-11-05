@@ -36,28 +36,15 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	gatewayClass := &gw.GatewayClass{}
 	if err := r.Get(ctx, req.NamespacedName, gatewayClass); err != nil {
-		log.Error(err, "unable to fetch GatewayClass")
-		return ctrl.Result{}, err
-	}
-
-	// TODO is this set by default?
-	gatewayClass.Status.Conditions = append(gatewayClass.Status.Conditions, v1.Condition{
-		Type:               "Accepted",
-		Status:             v1.ConditionUnknown,
-		Reason:             "Pending",
-		LastTransitionTime: v1.Now(),
-		ObservedGeneration: gatewayClass.Generation,
-	})
-	if err := r.Update(ctx, gatewayClass); err != nil {
-		log.Error(err, "unable to update GatewayClass status")
+		log.Error(err, "Failed to get GatewayClass")
 		return ctrl.Result{}, err
 	}
 
 	// validate parameters
-	condition := v1.Condition{}
+	var condition = v1.Condition{}
 	_, _, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
 	if err != nil {
-		log.Error(err, "unable to initialize Cloudflare API from secret in GatewayClass parameterRef. Ensure ACCOUNT_ID and TOKEN are set")
+		log.Error(err, "Failed to initialise Cloudflare API from secret in GatewayClass parameterRef. Ensure ACCOUNT_ID and TOKEN are set")
 
 		condition = v1.Condition{
 			Type:               "Accepted",
@@ -79,7 +66,7 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	gatewayClass.Status.Conditions = append(gatewayClass.Status.Conditions, condition)
 	if err := r.Update(ctx, gatewayClass); err != nil {
-		log.Error(err, "unable to update GatewayClass status")
+		log.Error(err, "Failed to update GatewayClass status")
 		return ctrl.Result{}, err
 	}
 
