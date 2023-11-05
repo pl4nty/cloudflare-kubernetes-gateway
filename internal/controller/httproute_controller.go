@@ -35,64 +35,23 @@ type HTTPRouteReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.0/pkg/reconcile
 
-// TODO handle deletion? eg handle all HTTPRoutes at once. how to reconcile DNS though? tunnel ID in comment field?
 func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	route := &gw.HTTPRoute{}
-	if err := r.Get(ctx, req.NamespacedName, route); err != nil {
-		// log.Error(err, "Failed to get HTTPRoute")
+	// TODO handle deletion. load all gateways by gatewayclass, and all hostnames via tunnel ID in comment
+	target := &gw.HTTPRoute{}
+	if err := r.Get(ctx, req.NamespacedName, target); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	sourceIngress := map[string]bool{}
-	for _, rule := range route.Spec.Rules {
-		paths := map[string]bool{}
-		for _, match := range rule.Matches {
-			if match.Path == nil {
-				paths["/"] = true
-			} else {
-				paths[*match.Path.Value] = true
-			}
-
-			if match.Headers != nil {
-				log.Info("HTTPRoute header match is not supported", match.Headers)
-			}
-		}
-
-		// TODO implement this with rewrite rules? Core filters are a MUST in the spec
-		if rule.Filters != nil {
-			log.Info("HTTPRoute filters are not supported", rule.Filters)
-		}
-
-		services := map[string]bool{}
-		for _, backend := range rule.BackendRefs {
-			if backend.Port == nil {
-				err := errors.New("HTTPRoute backend port is nil")
-				log.Error(err, "HTTPRoute backend port is required and nil", backend)
-				continue
-			}
-
-			var namespace string
-			if backend.Namespace == nil {
-				namespace = route.Namespace
-			} else {
-				namespace = string(*backend.Namespace)
-			}
-
-			services[fmt.Sprintf("http://%s.%s:%d", string(backend.Name), namespace, int32(*backend.Port))] = true
-		}
-
-		for _, hostname := range route.Spec.Hostnames {
-			for path := range paths {
-				for service := range services {
-					sourceIngress[fmt.Sprintf("%s|%s|%s", hostname, path, service)] = true
-				}
-			}
-		}
+	routes := &gw.HTTPRouteList{}
+	if err := r.List(ctx, routes); err != nil {
+		log.Error(err, "Failed to list HTTPRoutes")
+		return ctrl.Result{}, err
 	}
 
-	for _, parentRef := range route.Spec.ParentRefs {
+	for _, parentRef := range target.Spec.ParentRefs {
+		// check target is in scope
 		gateway := &gw.Gateway{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Namespace: string(*parentRef.Namespace),
@@ -101,6 +60,89 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "Failed to get Gateway")
 			return ctrl.Result{}, err
 		}
+
+		gatewayClass := &gw.GatewayClass{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name: string(gateway.Spec.GatewayClassName),
+		}, gatewayClass); err != nil {
+			log.Error(err, "Failed to get GatewayClasses")
+			return ctrl.Result{}, err
+		}
+
+		if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-controller" {
+			continue
+		}
+
+		// search for sibling routes
+		siblingRoutes := []gw.HTTPRoute{}
+		for _, searchRoute := range routes.Items {
+			for _, searchParent := range searchRoute.Spec.ParentRefs {
+				if *searchParent.Namespace == *parentRef.Namespace && searchParent.Name == parentRef.Name {
+					siblingRoutes = append(siblingRoutes, searchRoute)
+					break
+				}
+			}
+		}
+
+		// fan out to siblings
+		ingress := []cloudflare.UnvalidatedIngressRule{}
+		for _, route := range siblingRoutes {
+			for _, rule := range route.Spec.Rules {
+				paths := map[string]bool{}
+				for _, match := range rule.Matches {
+					if match.Path == nil {
+						paths["/"] = true
+					} else {
+						paths[*match.Path.Value] = true
+					}
+
+					if match.Headers != nil {
+						log.Info("HTTPRoute header match is not supported", match.Headers)
+					}
+				}
+
+				// TODO implement this with rewrite rules? Core filters are a MUST in the spec
+				if rule.Filters != nil {
+					log.Info("HTTPRoute filters are not supported", rule.Filters)
+				}
+
+				services := map[string]bool{}
+				for _, backend := range rule.BackendRefs {
+					if backend.Port == nil {
+						err := errors.New("HTTPRoute backend port is nil")
+						log.Error(err, "HTTPRoute backend port is required and nil", backend)
+						continue
+					}
+
+					var namespace string
+					if backend.Namespace == nil {
+						namespace = route.Namespace
+					} else {
+						namespace = string(*backend.Namespace)
+					}
+
+					services[fmt.Sprintf("http://%s.%s:%d", string(backend.Name), namespace, int32(*backend.Port))] = true
+				}
+
+				// product of hostname, path, service
+				for _, hostname := range route.Spec.Hostnames {
+					for path := range paths {
+						for service := range services {
+							ingress = append(ingress, cloudflare.UnvalidatedIngressRule{
+								Hostname: string(hostname),
+								Path:     path,
+								Service:  service,
+							})
+						}
+					}
+				}
+			}
+		}
+
+		// last rule must be the catch-all
+		ingress = append(ingress, cloudflare.UnvalidatedIngressRule{
+			Service: "http_status:404",
+		})
 
 		account, api, err := InitCloudflareApi(ctx, r.Client, string(gateway.Spec.GatewayClassName))
 		if err != nil {
@@ -115,39 +157,10 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		tunnel := tunnels[0]
 
-		config, err := api.GetTunnelConfiguration(ctx, account, tunnel.ID)
-		if err != nil {
-			log.Error(err, "Failed to get tunnel config from Cloudflare API")
-			return ctrl.Result{}, err
-		}
-
-		ingress := sourceIngress
-		for _, rule := range config.Config.Ingress {
-			// skip catch-all rules
-			if rule.Hostname != "" {
-				ingress[fmt.Sprintf("%s|%s|%s", rule.Hostname, rule.Path, rule.Service)] = true
-			}
-		}
-
-		ingressStruct := []cloudflare.UnvalidatedIngressRule{}
-		for rule := range ingress {
-			parts := strings.Split(rule, "|")
-			ingressStruct = append(ingressStruct, cloudflare.UnvalidatedIngressRule{
-				Hostname: parts[0],
-				Path:     parts[1],
-				Service:  parts[2],
-			})
-		}
-
-		// last rule must be the catch-all
-		ingressStruct = append(ingressStruct, cloudflare.UnvalidatedIngressRule{
-			Service: "http_status:404",
-		})
-
 		_, err = api.UpdateTunnelConfiguration(ctx, account, cloudflare.TunnelConfigurationParams{
 			TunnelID: tunnels[0].ID,
 			Config: cloudflare.TunnelConfiguration{
-				Ingress: ingressStruct,
+				Ingress: ingress,
 			},
 		})
 		if err != nil {
@@ -155,11 +168,12 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
-		log.Info("Updated Tunnel configuration", "ingress", ingressStruct)
+		log.Info("Updated Tunnel configuration", "ingress", ingress)
 
-		for _, gwHostname := range route.Spec.Hostnames {
+		// duplicate CNAMEs can't exist, so the last parentRef wins
+		for _, gwHostname := range target.Spec.Hostnames {
 			hostname := string(gwHostname)
-			// terrible
+			// terrible, but better than limiting a Gateway to a zone
 			zoneName := strings.Join(strings.Split(hostname, ".")[1:], ".")
 
 			zones, err := api.ListZonesContext(ctx, cloudflare.WithZoneFilters(zoneName, account.Identifier, "active"))
@@ -170,11 +184,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			zone := cloudflare.ResourceIdentifier(zones.Result[0].ID)
 
 			content := fmt.Sprintf("%s.cfargotunnel.com", tunnel.ID)
+			comment := fmt.Sprintf("Managed by cloudflare-kubernetes-gateway. Tunnel ID: %s", tunnel.ID)
 			records, info, _ := api.ListDNSRecords(ctx, zone, cloudflare.ListDNSRecordsParams{
 				Proxied: cloudflare.BoolPtr(true),
 				Type:    "CNAME",
 				Name:    hostname,
-				Content: content,
 			})
 			if info.Count == 0 {
 				_, err := api.CreateDNSRecord(ctx, zone, cloudflare.CreateDNSRecordParams{
@@ -182,6 +196,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					Type:    "CNAME",
 					Name:    hostname,
 					Content: content,
+					Comment: comment,
 				})
 				if err != nil {
 					log.Error(err, "Failed to create DNS record", hostname, content)
@@ -194,6 +209,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					Type:    "CNAME",
 					Name:    hostname,
 					Content: content,
+					Comment: &comment,
 				})
 				if err != nil {
 					log.Error(err, "Failed to update DNS record", hostname, content)
@@ -201,7 +217,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				}
 			}
 		}
-		log.Info("Updated DNS records", "hostnames", route.Spec.Hostnames)
+		log.Info("Updated DNS records", "hostnames", target.Spec.Hostnames)
 	}
 
 	return ctrl.Result{}, nil
