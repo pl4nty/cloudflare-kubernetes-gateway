@@ -38,10 +38,32 @@ type HTTPRouteReconciler struct {
 func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	// TODO handle deletion. load all gateways by gatewayclass, and all hostnames via tunnel ID in comment
+	// TODO delete DNS records. load all hostnames via tunnel ID in comment? but can't get DNS zone...
 	target := &gw.HTTPRoute{}
-	if err := r.Get(ctx, req.NamespacedName, target); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+	gateways := []gw.Gateway{}
+	hostnames := []gw.Hostname{}
+	err := r.Get(ctx, req.NamespacedName, target)
+	if err == nil {
+		for _, parentRef := range target.Spec.ParentRefs {
+			gateway := &gw.Gateway{}
+			if err := r.Get(ctx, types.NamespacedName{
+				Namespace: string(*parentRef.Namespace),
+				Name:      string(parentRef.Name),
+			}, gateway); err != nil {
+				log.Error(err, "Failed to get Gateway")
+				return ctrl.Result{}, err
+			}
+			gateways = append(gateways, *gateway)
+		}
+
+		hostnames = target.Spec.Hostnames
+	} else {
+		gatewayList := &gw.GatewayList{}
+		if err := r.List(ctx, gatewayList); err != nil {
+			log.Error(err, "Failed to list Gateways")
+			return ctrl.Result{}, err
+		}
+		gateways = gatewayList.Items
 	}
 
 	routes := &gw.HTTPRouteList{}
@@ -50,17 +72,8 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	for _, parentRef := range target.Spec.ParentRefs {
+	for _, gateway := range gateways {
 		// check target is in scope
-		gateway := &gw.Gateway{}
-		if err := r.Get(ctx, types.NamespacedName{
-			Namespace: string(*parentRef.Namespace),
-			Name:      string(parentRef.Name),
-		}, gateway); err != nil {
-			log.Error(err, "Failed to get Gateway")
-			return ctrl.Result{}, err
-		}
-
 		gatewayClass := &gw.GatewayClass{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name: string(gateway.Spec.GatewayClassName),
@@ -77,7 +90,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		siblingRoutes := []gw.HTTPRoute{}
 		for _, searchRoute := range routes.Items {
 			for _, searchParent := range searchRoute.Spec.ParentRefs {
-				if *searchParent.Namespace == *parentRef.Namespace && searchParent.Name == parentRef.Name {
+				if string(*searchParent.Namespace) == gateway.Namespace && string(searchParent.Name) == gateway.Name {
 					siblingRoutes = append(siblingRoutes, searchRoute)
 					break
 				}
@@ -171,7 +184,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Info("Updated Tunnel configuration", "ingress", ingress)
 
 		// duplicate CNAMEs can't exist, so the last parentRef wins
-		for _, gwHostname := range target.Spec.Hostnames {
+		for _, gwHostname := range hostnames {
 			hostname := string(gwHostname)
 			// terrible, but better than limiting a Gateway to a zone
 			zoneName := strings.Join(strings.Split(hostname, ".")[1:], ".")
@@ -217,7 +230,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				}
 			}
 		}
-		log.Info("Updated DNS records", "hostnames", target.Spec.Hostnames)
+		log.Info("Updated DNS records", "hostnames", hostnames)
 	}
 
 	return ctrl.Result{}, nil
