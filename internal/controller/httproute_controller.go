@@ -168,6 +168,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "Failed to get tunnel from Cloudflare API")
 			return ctrl.Result{}, err
 		}
+		if len(tunnels) == 0 {
+			err := errors.New("no tunnel found")
+			log.Error(err, "Tunnel list returned no results. The gateway reconciler may be broken", "gateway", gateway)
+			return ctrl.Result{}, err
+		}
 		tunnel := tunnels[0]
 
 		_, err = api.UpdateTunnelConfiguration(ctx, account, cloudflare.TunnelConfigurationParams{
@@ -192,6 +197,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			zones, err := api.ListZonesContext(ctx, cloudflare.WithZoneFilters(zoneName, account.Identifier, "active"))
 			if err != nil {
 				log.Error(err, "Failed to list DNS zones")
+				return ctrl.Result{}, err
+			}
+			if len(zones.Result) == 0 {
+				err := errors.New("failed to discover DNS zone")
+				log.Error(err, "Failed to discover DNS zone. Ensure Zone.DNS permission is configured", "zoneName", zoneName)
 				return ctrl.Result{}, err
 			}
 			zone := cloudflare.ResourceIdentifier(zones.Result[0].ID)
