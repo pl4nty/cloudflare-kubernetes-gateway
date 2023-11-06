@@ -52,7 +52,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		log.Error(err, "Failed to get GatewayClass")
 		return ctrl.Result{}, err
 	}
-	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-controller" {
+	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {
 		return ctrl.Result{}, nil
 	}
 	gatewayClassFinalizer := "gateway-exists-finalizer.gateway.networking.k8s.io"

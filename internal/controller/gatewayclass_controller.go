@@ -76,6 +76,6 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 // SetupWithManager sets up the controller with the Manager.
 func (r *GatewayClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&gw.GatewayClass{Spec: gw.GatewayClassSpec{ControllerName: "github.com/pl4nty/cloudflare-kubernetes-controller"}}).
+		For(&gw.GatewayClass{Spec: gw.GatewayClassSpec{ControllerName: "github.com/pl4nty/cloudflare-kubernetes-gateway"}}).
 		Complete(r)
 }

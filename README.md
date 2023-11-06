@@ -16,7 +16,7 @@ kind: GatewayClass
 metadata:
   name: cloudflare
 spec:
-  controllerName: github.com/pl4nty/cloudflare-kubernetes-controller
+  controllerName: github.com/pl4nty/cloudflare-kubernetes-gateway
   parametersRef:
     group: ""
     kind: Secret
