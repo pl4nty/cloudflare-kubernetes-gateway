@@ -8,7 +8,7 @@ Manage Kubernetes ingress traffic with Cloudflare Tunnels via the [Gateway API](
 2. Install cloudflare-kubernetes-gateway: `kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/default`
 3. [Find your Cloudflare account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/)
 3. [Create a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with the Account.Cloudflare Tunnel and DNS.Zone permissions
-4. Use them to create a Secret: `kubectl create secret -n cloudflare-kubernetes-gateway generic cloudflare --from-literal=ACCOUNT_ID=your-account-id --from-literal=TOKEN=your-token`
+4. Use them to create a Secret: `kubectl create secret -n cloudflare-gateway generic cloudflare --from-literal=ACCOUNT_ID=your-account-id --from-literal=TOKEN=your-token`
 5. Create a file containing your GatewayClass, then apply it with `kubectl apply -f file.yaml`:
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -20,7 +20,7 @@ spec:
   parametersRef:
     group: ""
     kind: Secret
-    namespace: cloudflare-kubernetes-gateway
+    namespace: cloudflare-gateway
     name: cloudflare
 ```
 7. [Create Gateways and HTTPRoutes](https://gateway-api.sigs.k8s.io/guides/http-routing/) to start managing traffic!
