@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -169,9 +170,8 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 		if len(tunnels) == 0 {
-			err := errors.New("no tunnel found")
-			log.Error(err, "Tunnel list returned no results. The gateway reconciler may be broken", "gateway", gateway)
-			return ctrl.Result{}, err
+			log.Info("Tunnel doesn't exist yet, probably waiting for the Gateway controller. Retrying in 1 minute", "gateway", gateway.Name)
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 		tunnel := tunnels[0]
 
