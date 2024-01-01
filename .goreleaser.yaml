@@ -1,0 +1,33 @@
+project_name: cloudflare-kubernetes-gateway
+builds:
+  - env: [CGO_ENABLED=0]
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+dockers:
+  - image_templates:
+      - "ghcr.io/pl4nty/{{ .ProjectName }}:{{ .Tag }}-amd64"
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+    extra_files:
+      - static
+      - templates
+  - image_templates:
+      - "ghcr.io/pl4nty/{{ .ProjectName }}:{{ .Tag }}-arm64"
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64"
+    goarch: arm64
+    extra_files:
+      - static
+      - templates
+docker_manifests:
+  - name_template: "ghcr.io/pl4nty/{{ .ProjectName }}:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/pl4nty/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "ghcr.io/pl4nty/{{ .ProjectName }}:{{ .Tag }}-arm64"
