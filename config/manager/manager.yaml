@@ -39,6 +39,7 @@ spec:
       # no nodeAffinity, to support all current and future platforms with https://github.com/ko-build/ko
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
         seccompProfile:
           type: RuntimeDefault
       containers:
