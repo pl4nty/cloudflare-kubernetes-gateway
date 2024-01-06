@@ -11,3 +11,4 @@ kos:
     platforms:
       - all
     main: ./cmd
+    base_image: golang:1.21
