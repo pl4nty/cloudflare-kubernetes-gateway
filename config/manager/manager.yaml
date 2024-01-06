@@ -44,7 +44,7 @@ spec:
       containers:
       - args:
         - --leader-elect
-        image: controller:latest
+        image: controller
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
