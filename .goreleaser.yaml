@@ -9,6 +9,5 @@ kos:
     bare: true
     preserve_import_paths: false
     platforms:
-      - linux/amd64
-      - linux/arm64
+      - all
     main: ./cmd
