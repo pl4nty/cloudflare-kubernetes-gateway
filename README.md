@@ -24,6 +24,37 @@ spec:
     name: cloudflare
 ```
 7. [Create Gateways and HTTPRoutes](https://gateway-api.sigs.k8s.io/guides/http-routing/) to start managing traffic!
+  Example:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: gateway
+  namespace: cloudflare-gateway
+spec:
+  gatewayClassName: cloudflare
+  listeners:
+    - protocol: HTTP
+      port: 80
+      name: http
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: grafana-route
+spec:
+  parentRefs:
+    - name: gateway
+      namespace: cloudflare-gateway
+  hostnames:
+    - "grafana.foobar.com"
+  rules:
+    - backendRefs:
+        - name: grafana
+          port: 80
+
+```
 
 ## Features
 
