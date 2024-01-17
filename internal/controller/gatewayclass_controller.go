@@ -41,7 +41,7 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// validate parameters
-	var condition = v1.Condition{}
+	var condition v1.Condition
 	_, _, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
 	if err != nil {
 		log.Error(err, "Failed to initialise Cloudflare API from secret in GatewayClass parameterRef. Ensure ACCOUNT_ID and TOKEN are set")
