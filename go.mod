@@ -2,8 +2,6 @@ module github.com/pl4nty/cloudflare-kubernetes-gateway
 
 go 1.21
 
-toolchain go1.21.1
-
 require (
 	github.com/cloudflare/cloudflare-go v0.86.0
 	github.com/onsi/ginkgo/v2 v2.14.0
