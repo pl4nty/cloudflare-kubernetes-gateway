@@ -3,7 +3,7 @@
 {
 	"name": "cloudflare-kubernetes-gateway",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/go:1-1.21-bookworm",
+	"image": "mcr.microsoft.com/devcontainers/go:1.1.5-1.21-bookworm",
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {
 			"dockerDashComposeVersion": "v2"
