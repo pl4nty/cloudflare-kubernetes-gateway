@@ -62,7 +62,7 @@ jobs:
     - scan
     - test
     - prep
-    if: ${{ needs.prep.outputs.releases_created }}
+    if: ${{ needs.prep.outputs.releases_created == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
