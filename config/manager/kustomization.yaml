@@ -4,4 +4,4 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: controller
-  newName: ghcr.io/pl4nty/cloudflare-kubernetes-gateway:v0.2.0
+  newName: ghcr.io/pl4nty/cloudflare-kubernetes-gateway:v0.3.0
