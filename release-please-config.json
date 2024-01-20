@@ -1,4 +1,5 @@
 {
+  "release-type": "go",
   "extra-files": [
     {
       "type": "yaml",
