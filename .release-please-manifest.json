@@ -1,0 +1,9 @@
+{
+  "extra-files": [
+    {
+      "type": "yaml",
+      "path": "config/manager/kustomization.yaml",
+      "jsonpath": "$.images[0].newName"
+    }
+  ]
+}
