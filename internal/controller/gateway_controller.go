@@ -210,6 +210,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				ObjectMeta: v1.ObjectMeta{Labels: labels},
 				Spec: core.PodSpec{Containers: []core.Container{{
 					Name:  "main",
+					// renovate: datasource=docker
 					Image: "cloudflare/cloudflared:2023.8.2",
 					Args:  []string{"tunnel", "--no-autoupdate", "run", "--token", token},
 				}}},
