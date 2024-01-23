@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.0...v0.3.1) (2024-01-23)
+
+
+### Bug Fixes
+
+* **deps:** add renovate config for cloudflared ([#32](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/32)) ([a818429](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/a818429ba00c50d413522e6b2b8eb12f979c3c6d))
+
 ## [0.3.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.2.1...v0.3.0) (2024-01-20)
 
 
