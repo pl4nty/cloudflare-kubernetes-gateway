@@ -40,7 +40,7 @@ jobs:
         version: latest
 
     - run: go build -v ./...
-    - uses: robherley/go-test-action@v0.1.0
+    - uses: robherley/go-test-action@v0.2.0
       env:
         EMAIL: ${{ secrets.EMAIL }}
         PASSWORD: ${{ secrets.PASSWORD }}
