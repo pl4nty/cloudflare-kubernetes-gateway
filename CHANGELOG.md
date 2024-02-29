@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.1...v0.3.2) (2024-02-29)
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes packages to v0.29.2 ([#45](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/45)) ([efade8a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/efade8af639839e4e9c20ac2a7b649764488bf5f))
+* **deps:** update module github.com/cloudflare-go to v0.87.0 ([#37](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/37)) ([c182615](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/c182615703e6b197e7fe87276d1248d957431e88))
+* **deps:** update module github.com/cloudflare/cloudflare-go to v0.88.0 ([#44](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/44)) ([2308518](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/2308518c587b77d9267c838feb4e0f642d3f93df))
+* **deps:** update module github.com/cloudflare/cloudflare-go to v0.89.0 ([#48](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/48)) ([f93f20e](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f93f20edb3561a8cfdb5d624918add508ca1002e))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.17.1 ([#42](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/42)) ([fff7616](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/fff76165cf1ee4d9252555f50fb87d1581b7eb2a))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.17.2 ([#46](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/46)) ([5c2dac4](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5c2dac4ae629524fe6e071c97cb5ab01ba92c815))
+
 ## [0.3.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.0...v0.3.1) (2024-01-23)
 
 
