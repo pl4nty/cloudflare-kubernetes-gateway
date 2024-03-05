@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.2...v0.3.3) (2024-03-05)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.16.0 ([#49](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/49)) ([b84acfc](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/b84acfc9dac8bd9b8495777135d59671130dc23b))
+
 ## [0.3.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.1...v0.3.2) (2024-02-29)
 
 
