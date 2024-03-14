@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.3...v0.3.4) (2024-03-13)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/cloudflare/cloudflare-go to v0.90.0 ([#51](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/51)) ([acb3602](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/acb36026538c22dbad807cfd314b2256b90114a1))
+
 ## [0.3.3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.2...v0.3.3) (2024-03-05)
 
 
