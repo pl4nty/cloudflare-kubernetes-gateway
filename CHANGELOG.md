@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.4...v0.3.5) (2024-03-16)
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes packages to v0.29.3 ([#53](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/53)) ([385fb65](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/385fb656f65f3116c08fe7e4149ee8f05ebeadc9))
+
 ## [0.3.4](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.3...v0.3.4) (2024-03-13)
 
 
