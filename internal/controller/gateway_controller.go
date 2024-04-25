@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/cloudflare/cloudflare-go"
+	"github.com/cloudflare/cloudflare-go/v2"
+	"github.com/cloudflare/cloudflare-go/v2/zero_trust"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -109,18 +110,19 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				log.Error(err, "Failed to delete Deployment")
 			}
 
-			tunnel, tunnelInfo, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{
-				IsDeleted: cloudflare.BoolPtr(false),
-				Name:      gateway.Name,
+			tunnel, err := api.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
+				AccountID: cloudflare.String(account),
+				IsDeleted: cloudflare.Bool(false),
+				Name:      cloudflare.String(gateway.Name),
 			})
 			if err != nil {
 				log.Error(err, "Failed to get tunnel from Cloudflare API")
 				return ctrl.Result{}, err
 			}
 
-			if tunnelInfo.Count > 0 {
+			if len(tunnel.Result) > 0 {
 				log.Info("Deleting Tunnel")
-				if err := api.DeleteTunnel(ctx, account, tunnel[0].ID); err != nil {
+				if _, err := api.ZeroTrust.Tunnels.Delete(ctx, tunnel.Result[0].ID, zero_trust.TunnelDeleteParams{}); err != nil {
 					log.Error(err, "Failed to delete tunnel Deployment")
 					return ctrl.Result{}, err
 				}
@@ -150,25 +152,30 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	tunnels, info, err := api.ListTunnels(ctx, account, cloudflare.TunnelListParams{IsDeleted: cloudflare.BoolPtr(false), Name: gateway.Name})
+	tunnels, err := api.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
+		AccountID: cloudflare.String(account),
+		IsDeleted: cloudflare.Bool(false),
+		Name:      cloudflare.String(gateway.Name),
+	})
 	if err != nil {
 		log.Error(err, "Failed to get Tunnel from Cloudflare API")
 		return ctrl.Result{}, err
 	}
 
-	tunnel := cloudflare.Tunnel{}
-	if info.Count == 0 {
+	tunnelID := ""
+	if len(tunnels.Result) == 0 {
 		log.Info("Creating tunnel")
 		// secret is required, despite optional in docs and seemingly only needed for ConfigSrc=local
-		tunnel, err = api.CreateTunnel(ctx, account, cloudflare.TunnelCreateParams{
-			Name:      gateway.Name,
-			ConfigSrc: "cloudflare",
-			Secret:    "AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg=",
+		tunnel, err := api.ZeroTrust.Tunnels.New(ctx, zero_trust.TunnelNewParams{
+			AccountID:    cloudflare.String(account),
+			Name:         cloudflare.String(gateway.Name),
+			TunnelSecret: cloudflare.String("AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg="),
 		})
 		if err != nil {
 			log.Error(err, "Failed to create tunnel")
 			return ctrl.Result{}, err
 		}
+		tunnelID = tunnel.ID
 	} else {
 		// patch unsupported with api_token
 		// if tunnels[0].Name != gateway.Name {
@@ -181,12 +188,21 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// }
 		// }
 		log.Info("Tunnel exists")
-		tunnel = tunnels[0]
+		tunnelID = tunnels.Result[0].ID
 	}
 
-	token, err := api.GetTunnelToken(ctx, account, tunnel.ID)
-	if err != nil {
-		log.Error(err, "Failed to get tunnel token")
+	// doesn't expose the actual token yet
+	res, err := api.ZeroTrust.Tunnels.Token.Get(ctx, tunnelID, zero_trust.TunnelTokenGetParams{
+		AccountID: cloudflare.String(account),
+	})
+	token := ""
+	if v, ok := (*res).(zero_trust.TunnelTokenGetResponseArray); ok {
+		if v, ok := v[0].(string); ok {
+			token = v
+		}
+	}
+	if err != nil || token == "" {
+		log.Error(err, "Failed to get tunnel token", token)
 		return ctrl.Result{}, err
 	}
 
@@ -209,7 +225,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			Template: core.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{Labels: labels},
 				Spec: core.PodSpec{Containers: []core.Container{{
-					Name:  "main",
+					Name: "main",
 					// renovate: datasource=docker
 					Image: "cloudflare/cloudflared:2024.5.0",
 					Args:  []string{"tunnel", "--no-autoupdate", "run", "--token", token},
