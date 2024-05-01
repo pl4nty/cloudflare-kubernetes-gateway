@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
 	core "k8s.io/api/core/v1"
@@ -33,8 +34,8 @@ func InitCloudflareApi(ctx context.Context, c client.Client, gatewayClassName st
 		return nil, nil, err
 	}
 
-	account := cloudflare.AccountIdentifier(string(secret.Data["ACCOUNT_ID"]))
-	api, err := cloudflare.NewWithAPIToken(string(secret.Data["TOKEN"]))
+	account := cloudflare.AccountIdentifier(strings.TrimSpace(string(secret.Data["ACCOUNT_ID"])))
+	api, err := cloudflare.NewWithAPIToken(strings.TrimSpace(string(secret.Data["TOKEN"])))
 	if err != nil {
 		log.Error(err, "unable to initialize Cloudflare API from token")
 		return nil, nil, err
