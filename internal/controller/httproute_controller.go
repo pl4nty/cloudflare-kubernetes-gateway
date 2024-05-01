@@ -199,20 +199,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// duplicate CNAMEs can't exist, so the last parentRef wins
 		for _, gwHostname := range hostnames {
 			hostname := string(gwHostname)
-			// terrible, but better than limiting a Gateway to a zone
-			zoneName := strings.Join(strings.Split(hostname, ".")[1:], ".")
-
-			zones, err := api.ListZonesContext(ctx, cloudflare.WithZoneFilters(zoneName, account.Identifier, "active"))
+			zoneID, err := FindZoneID(hostname, ctx, api, account)
 			if err != nil {
-				log.Error(err, "Failed to list DNS zones")
 				return ctrl.Result{}, err
 			}
-			if len(zones.Result) == 0 {
-				err := errors.New("failed to discover DNS zone")
-				log.Error(err, "Failed to discover DNS zone. Ensure Zone.DNS permission is configured", "zoneName", zoneName)
-				return ctrl.Result{}, err
-			}
-			zone := cloudflare.ResourceIdentifier(zones.Result[0].ID)
+			zone := cloudflare.ResourceIdentifier(zoneID)
 
 			content := fmt.Sprintf("%s.cfargotunnel.com", tunnel.ID)
 			comment := "Managed by github.com/pl4nty/cloudflare-kubernetes-gateway"
@@ -259,4 +250,22 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gw.HTTPRoute{}).
 		Complete(r)
+}
+
+func FindZoneID(hostname string, ctx context.Context, api *cloudflare.API, account *cloudflare.ResourceContainer) (string, error) {
+	log := log.FromContext(ctx)
+	for parts := range len(strings.Split(hostname, ".")) {
+		zoneName := strings.Join(strings.Split(hostname, ".")[parts:], ".")
+		zones, err := api.ListZonesContext(ctx, cloudflare.WithZoneFilters(zoneName, account.Identifier, "active"))
+		if err != nil {
+			log.Error(err, "Failed to list DNS zones")
+			return "", err
+		}
+		if len(zones.Result) != 0 {
+			return zones.Result[0].ID, nil
+		}
+	}
+	err := errors.New("failed to discover DNS zone")
+	log.Error(err, "Failed to discover parent DNS zone. Ensure Zone.DNS permission is configured", "hostname", hostname)
+	return "", err
 }
