@@ -46,9 +46,13 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	err := r.Get(ctx, req.NamespacedName, target)
 	if err == nil {
 		for _, parentRef := range target.Spec.ParentRefs {
+			namespace := target.ObjectMeta.Namespace
+			if parentRef.Namespace != nil {
+				namespace = string(*parentRef.Namespace)
+			}
 			gateway := &gw.Gateway{}
 			if err := r.Get(ctx, types.NamespacedName{
-				Namespace: string(*parentRef.Namespace),
+				Namespace: namespace,
 				Name:      string(parentRef.Name),
 			}, gateway); err != nil {
 				log.Error(err, "Failed to get Gateway")
@@ -91,7 +95,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		siblingRoutes := []gw.HTTPRoute{}
 		for _, searchRoute := range routes.Items {
 			for _, searchParent := range searchRoute.Spec.ParentRefs {
-				if string(*searchParent.Namespace) == gateway.Namespace && string(searchParent.Name) == gateway.Name {
+				namespace := searchRoute.ObjectMeta.Namespace
+				if searchParent.Namespace != nil {
+					namespace = string(*searchParent.Namespace)
+				}
+				if namespace == gateway.Namespace && string(searchParent.Name) == gateway.Name {
 					siblingRoutes = append(siblingRoutes, searchRoute)
 					break
 				}
