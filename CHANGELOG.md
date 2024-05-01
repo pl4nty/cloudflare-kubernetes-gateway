@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.8](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.7...v0.3.8) (2024-05-01)
+
+
+### Bug Fixes
+
+* Allow root domain has HTTPRoute hostname ([1e4f5c9](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/1e4f5c9161600af8a8507633b2e5dae9c6d95f4f))
+* **deps:** update kubernetes packages to v0.29.4 ([#71](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/71)) ([cbbc50a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/cbbc50a8f47853a4fe7d48ff4040ec955975ca0d))
+* **deps:** update module github.com/cloudflare/cloudflare-go to v0.92.0 ([#63](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/63)) ([a9f4263](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/a9f42638324e1276c00de21612fed585492afb30))
+* **deps:** update module github.com/cloudflare/cloudflare-go to v0.93.0 ([#68](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/68)) ([79a5a45](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/79a5a455bfbf1885b2150b301daa3829f1c306ac))
+* **deps:** update module github.com/cloudflare/cloudflare-go to v0.94.0 ([#75](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/75)) ([9bf659f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/9bf659fc6ea5593dbad354c69f04e6a78157d8fe))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.17.2 ([#78](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/78)) ([c30685c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/c30685ce30716cb290d5cab4a7ebbd94ae2d91bd))
+* **deps:** update module github.com/onsi/gomega to v1.33.0 ([#73](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/73)) ([fd91cd2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/fd91cd28f3cf633fb480c4ed6cb40e9f65718023))
+* **deps:** update module github.com/onsi/gomega to v1.33.1 ([#79](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/79)) ([d34f295](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/d34f295f91e369a3f7e2de27f9ed3a4d1cca9d3c))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.17.3 ([#67](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/67)) ([66d9b44](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/66d9b44076982d897cc6c36725e813e4bb8a7e93))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.18.0 ([#76](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/76)) ([1cda9da](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/1cda9dac3f77861b9062e89b0b403f37f83e1378))
+* Handle HTTPRoute without parentRefs[].namespace ([8477c93](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/8477c935e57802a832c18c6745697af13b7c7e3d))
+* Remove /api from build ([8629959](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/8629959b3838b87fd216fb3f79257efccf3db219))
+* Specify registry for golang container ([4ed277e](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/4ed277e4a2ecdc643c3b36b6744b1f6dc3e2904a))
+* Strip spaces from secret data ([9a37c06](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/9a37c069e1ad57b9029b8ab37157e42e6dbc52e0))
+
 ## [0.3.7](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.6...v0.3.7) (2024-03-24)
 
 
