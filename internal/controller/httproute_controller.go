@@ -212,19 +212,18 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			zone := cloudflare.ResourceIdentifier(zoneID)
 
 			content := fmt.Sprintf("%s.cfargotunnel.com", tunnel.ID)
 			comment := "Managed by github.com/pl4nty/cloudflare-kubernetes-gateway"
 			records, _ := api.DNS.Records.List(ctx, dns.RecordListParams{
-				ZoneID:  cloudflare.String(zone),
+				ZoneID:  cloudflare.String(zoneID),
 				Proxied: cloudflare.Bool(true),
 				Type:    cloudflare.F[dns.RecordListParamsType]("CNAME"),
 				Name:    cloudflare.String(hostname),
 			})
 			if len(records.Result) == 0 {
 				_, err := api.DNS.Records.New(ctx, dns.RecordNewParams{
-					ZoneID: cloudflare.String(zone),
+					ZoneID: cloudflare.String(zoneID),
 					Record: dns.CNAMERecordParam{
 						Proxied: cloudflare.Bool(true),
 						Type:    cloudflare.F[dns.CNAMERecordType]("CNAME"),
@@ -239,7 +238,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				}
 			} else {
 				_, err := api.DNS.Records.Update(ctx, records.Result[0].ID, dns.RecordUpdateParams{
-					ZoneID: cloudflare.String(zone),
+					ZoneID: cloudflare.String(zoneID),
 					Record: dns.CNAMERecordParam{
 						Proxied: cloudflare.Bool(true),
 						Type:    cloudflare.F[dns.CNAMERecordType]("CNAME"),
@@ -267,11 +266,15 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func FindZoneID(hostname string, ctx context.Context, api *cloudflare.API, account *cloudflare.ResourceContainer) (string, error) {
+func FindZoneID(hostname string, ctx context.Context, api *cloudflare.Client, accountID string) (string, error) {
 	log := log.FromContext(ctx)
-	for parts := range len(strings.Split(hostname, ".")) {
+	for parts := range strings.Split(hostname, ".") {
 		zoneName := strings.Join(strings.Split(hostname, ".")[parts:], ".")
-		zones, err := api.ListZonesContext(ctx, cloudflare.WithZoneFilters(zoneName, account.Identifier, "active"))
+		zones, err := api.Zones.List(ctx, zones.ZoneListParams{
+			Account: cloudflare.F(zones.ZoneListParamsAccount{ID: cloudflare.String(accountID)}),
+			Name: cloudflare.String(zoneName),
+			Status: cloudflare.F(zones.ZoneListParamsStatusActive),
+	})
 		if err != nil {
 			log.Error(err, "Failed to list DNS zones")
 			return "", err
