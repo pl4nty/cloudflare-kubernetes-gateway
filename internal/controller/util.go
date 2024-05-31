@@ -35,7 +35,7 @@ func InitCloudflareApi(ctx context.Context, c client.Client, gatewayClassName st
 		return "", nil, err
 	}
 
-	account := string(strings.TrimSpace(secret.Data["ACCOUNT_ID"]))
+	account := strings.TrimSpace(string(secret.Data["ACCOUNT_ID"]))
 	api := cloudflare.NewClient(option.WithAPIToken(strings.TrimSpace(string(secret.Data["TOKEN"]))))
 
 	return account, api, nil

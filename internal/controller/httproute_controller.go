@@ -268,13 +268,13 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func FindZoneID(hostname string, ctx context.Context, api *cloudflare.Client, accountID string) (string, error) {
 	log := log.FromContext(ctx)
-	for parts := range strings.Split(hostname, ".") {
+	for parts := range len(strings.Split(hostname, ".")) {
 		zoneName := strings.Join(strings.Split(hostname, ".")[parts:], ".")
 		zones, err := api.Zones.List(ctx, zones.ZoneListParams{
 			Account: cloudflare.F(zones.ZoneListParamsAccount{ID: cloudflare.String(accountID)}),
-			Name: cloudflare.String(zoneName),
-			Status: cloudflare.F(zones.ZoneListParamsStatusActive),
-	})
+			Name:    cloudflare.String(zoneName),
+			Status:  cloudflare.F(zones.ZoneListParamsStatusActive),
+		})
 		if err != nil {
 			log.Error(err, "Failed to list DNS zones")
 			return "", err
