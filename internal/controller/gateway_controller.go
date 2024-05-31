@@ -5,12 +5,14 @@ import (
 	"errors"
 
 	"github.com/cloudflare/cloudflare-go/v2"
+	"github.com/cloudflare/cloudflare-go/v2/shared"
 	"github.com/cloudflare/cloudflare-go/v2/zero_trust"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -191,28 +193,14 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		tunnelID = tunnels.Result[0].ID
 	}
 
-	// doesn't expose the actual token yet
 	res, err := api.ZeroTrust.Tunnels.Token.Get(ctx, tunnelID, zero_trust.TunnelTokenGetParams{
 		AccountID: cloudflare.String(account),
 	})
-	token := ""
-	if v, ok := (*res).(zero_trust.TunnelTokenGetResponseArray); ok {
-		if v, ok := v[0].(string); ok {
-			token = v
-		}
-	}
-	if err != nil || token == "" {
-		log.Error(err, "Failed to get tunnel token", token)
+	if err != nil {
+		log.Error(err, "Failed to get tunnel token")
 		return ctrl.Result{}, err
 	}
-
-	if err := r.Get(ctx, types.NamespacedName{
-		Namespace: gateway.Namespace,
-		Name:      gateway.Name,
-	}, &apps.Deployment{}); err == nil {
-		log.Info("Tunnel deployment exists")
-		return ctrl.Result{}, nil
-	}
+	token := string((*res).(shared.UnionString))
 
 	labels := map[string]string{"cfargotunnel.com/name": gateway.Name}
 	deployment := apps.Deployment{
@@ -227,15 +215,33 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Spec: core.PodSpec{Containers: []core.Container{{
 					Name: "main",
 					// renovate: datasource=docker
-					Image: "cloudflare/cloudflared:2024.5.0",
-					Args:  []string{"tunnel", "--no-autoupdate", "run", "--token", token},
+					Image: "cloudflare/cloudflared:2024.5.1",
+					Args:  []string{"tunnel", "--no-autoupdate", "run", "--token", token, "--metrics", "0.0.0.0:2000"},
+					LivenessProbe: &core.Probe{
+						FailureThreshold:    5,
+						InitialDelaySeconds: 10,
+						PeriodSeconds:       10,
+						ProbeHandler: core.ProbeHandler{
+							HTTPGet: &core.HTTPGetAction{
+								Path: "/ready",
+								Port: intstr.FromInt(2000),
+							},
+						},
+					},
 				}}},
+			},
+			Strategy: apps.DeploymentStrategy{
+				RollingUpdate: &apps.RollingUpdateDeployment{
+					MaxUnavailable: &intstr.IntOrString{IntVal: 0},
+				},
 			},
 		},
 	}
 
-	if err := r.Create(ctx, &deployment); err != nil {
-		log.Error(err, "Failed to create tunnel deployment")
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, &deployment, func() error {
+		return r.Patch(ctx, &deployment, client.MergeFrom(deployment.DeepCopy()))
+	}); err != nil {
+		log.Error(err, "Failed to reconcile tunnel deployment")
 		return ctrl.Result{}, err
 	}
 

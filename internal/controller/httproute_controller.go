@@ -216,8 +216,8 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			content := fmt.Sprintf("%s.cfargotunnel.com", tunnel.ID)
 			comment := "Managed by github.com/pl4nty/cloudflare-kubernetes-gateway"
-			records, err := api.DNS.Records.List(ctx, dns.RecordListParams{
-				ZoneID: cloudflare.String(zone),
+			records, _ := api.DNS.Records.List(ctx, dns.RecordListParams{
+				ZoneID:  cloudflare.String(zone),
 				Proxied: cloudflare.Bool(true),
 				Type:    cloudflare.F[dns.RecordListParamsType]("CNAME"),
 				Name:    cloudflare.String(hostname),
