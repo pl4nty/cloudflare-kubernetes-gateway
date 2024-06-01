@@ -42,9 +42,6 @@ jobs:
 
     - run: go build -v ./...
     - uses: robherley/go-test-action@v0.4.1
-      env:
-        EMAIL: ${{ secrets.EMAIL }}
-        PASSWORD: ${{ secrets.PASSWORD }}
 
   prep:
     if: ${{ github.ref == 'refs/heads/main' }}
@@ -55,7 +52,7 @@ jobs:
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
     steps:
-    - uses: google-github-actions/release-please-action@v4
+    - uses: googleapis/release-please-action@v4
       id: release
       with:
         release-type: go

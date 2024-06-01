@@ -13,7 +13,7 @@
         "^internal/controller/gateway_controller\\.go$"
       ],
       "matchStrings": [
-        "\\n\\t+// renovate: datasource=(?<datasource>[a-z-]+)\\n\\t+Image: \"(?<depName>[^$:\" ]+):(?<currentValue>[^$:\" ]+)\",\\n"
+        "\\n\\t+ renovate: datasource=(?<datasource>[a-z-]+)\\n\\t+Image: \"(?<depName>[^$:\" ]+):(?<currentValue>[^$:\" ]+)\",\\n"
       ]
     }
   ]
