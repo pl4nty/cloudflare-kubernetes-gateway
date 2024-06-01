@@ -202,13 +202,15 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	token := string((*res).(shared.UnionString))
 
-	labels := map[string]string{"cfargotunnel.com/name": gateway.Name}
-	deployment := apps.Deployment{
+	deployment := &apps.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: gateway.Namespace,
 			Name:      gateway.Name,
 		},
-		Spec: apps.DeploymentSpec{
+	}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
+		labels := map[string]string{"cfargotunnel.com/name": gateway.Name}
+		deployment.Spec = apps.DeploymentSpec{
 			Selector: &v1.LabelSelector{MatchLabels: labels},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{Labels: labels},
@@ -235,15 +237,13 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					MaxUnavailable: &intstr.IntOrString{IntVal: 0},
 				},
 			},
-		},
-	}
-
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, &deployment, func() error {
-		return r.Patch(ctx, &deployment, client.MergeFrom(deployment.DeepCopy()))
+		}
+		return nil
 	}); err != nil {
 		log.Error(err, "Failed to reconcile tunnel deployment")
 		return ctrl.Result{}, err
 	}
+	log.Info("Reconciled tunnel deployment")
 
 	return ctrl.Result{}, nil
 }
