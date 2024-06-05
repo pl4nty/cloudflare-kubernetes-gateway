@@ -1,0 +1,11 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: gateway-conformance
+spec:
+  controllerName: github.com/pl4nty/cloudflare-kubernetes-gateway
+  parametersRef:
+    group: ""
+    kind: Secret
+    namespace: default
+    name: gateway-conformance

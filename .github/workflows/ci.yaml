@@ -61,26 +61,12 @@ jobs:
           kubectl create secret -n default generic gateway-conformance \
           --from-literal=ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} \
           --from-literal=TOKEN=${{ secrets.CLOUDFLARE_TOKEN }}
-          echo $FILE | kubectl apply -f -
-        env:
-          FILE: |
-            apiVersion: gateway.networking.k8s.io/v1
-            kind: GatewayClass
-            metadata:
-              name: gateway-conformance
-            spec:
-              controllerName: github.com/pl4nty/cloudflare-kubernetes-gateway
-              parametersRef:
-                group: ""
-                kind: Secret
-                namespace: default
-                name: gateway-conformance
+          kubectl apply -f .github/gateway-class.yaml
 
-      - name: Run conformance tests
-        run: |
-          go test ./gateway-api/conformance -run TestConformance -args \
-          --supported-features=Gateway,HTTPRoute \
-          --cleanup-base-resources=false
+      - uses: robherley/go-test-action@v0.4.1
+        with:
+          moduleDirectory: gateway-api
+          testArguments: ./conformance -run TestConformance -args --supported-features=Gateway,HTTPRoute --cleanup-base-resources=false
 
   release-please:
     if: github.ref == 'refs/heads/main'
