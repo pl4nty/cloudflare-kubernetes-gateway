@@ -68,6 +68,16 @@ jobs:
           moduleDirectory: gateway-api
           testArguments: ./conformance -run TestConformance -args --supported-features=Gateway,HTTPRoute --cleanup-base-resources=false
 
+      - name: Get manager logs
+        if: ${{ !cancelled() }}
+        run: kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager > /tmp/manager.log
+      - name: Upload manager logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v2.2.4
+        with:
+          name: manager-log
+          path: /tmp/manager.log
+
   release-please:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
