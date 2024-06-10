@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.4.0...v0.5.0) (2024-06-10)
+
+
+### Features
+
+* refactor CI, add conformance tests ([1d6f200](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/1d6f20021922a6d063d6347f4b94fdc2f7cbb506))
+
+
+### Bug Fixes
+
+* conformance cluster setup and report ([fa3b2cd](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/fa3b2cdc2455f60995b2e05e91fec87c2ac6d397))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.18.4 ([#104](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/104)) ([62cc730](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/62cc730295f22518d764ef6df748737ea69ae875))
+* increment GatewayClass ObservedGeneration ([9e6d2d7](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/9e6d2d75852a8dc16d7fa2ffcd08c6821acf441b))
+* show manager logs after conformance tests ([684bb91](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/684bb91ca8f4db02594e3904182568b395791b3e))
+
 ## [0.4.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.3.8...v0.4.0) (2024-06-01)
 
 
