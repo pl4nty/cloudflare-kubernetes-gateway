@@ -66,7 +66,7 @@ jobs:
       - uses: robherley/go-test-action@v0.4.1
         with:
           moduleDirectory: gateway-api
-          testArguments: ./conformance -run TestConformance -args --supported-features=Gateway,HTTPRoute --cleanup-base-resources=false
+          testArguments: ./conformance -run TestConformance -args --cleanup-base-resources=false --conformance-profiles=GATEWAY-HTTP
 
       - name: Get manager logs
         if: ${{ !cancelled() }}
@@ -89,7 +89,7 @@ jobs:
   release:
     needs:
       - scan
-    if: needs.prep.outputs.releases_created
+    if: needs.release-please.outputs.releases_created
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -109,6 +109,6 @@ jobs:
           go-version: stable
       - uses: goreleaser/goreleaser-action@v6.0.0
         with:
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ github.token }}

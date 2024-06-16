@@ -25,6 +25,21 @@ rules:
   - update
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - gateway.networking.k8s.io
   resources:
   - gatewayclasses
@@ -55,6 +70,8 @@ rules:
   resources:
   - gateways
   verbs:
+  - create
+  - delete
   - get
   - list
   - patch
