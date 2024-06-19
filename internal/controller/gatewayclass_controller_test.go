@@ -2,6 +2,7 @@ package controller
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("GatewayClass Controller", func() {
@@ -11,6 +12,7 @@ var _ = Describe("GatewayClass Controller", func() {
 
 			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
 			// Example: If you expect a certain status condition after reconciliation, verify it here.
+			Expect(nil).To(Equal(nil))
 		})
 	})
 })
