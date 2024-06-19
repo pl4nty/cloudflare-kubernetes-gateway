@@ -59,6 +59,14 @@ var _ = Describe("Gateway controller", func() {
 						Name:      GatewayName,
 						Namespace: namespace.Name,
 					},
+					Spec: gatewayv1.GatewaySpec{
+						GatewayClassName: "cloudflare",
+						Listeners: []gatewayv1.Listener{{
+							Name: "cloudflare",
+							Port: 80,
+							Protocol: "http",
+						}},
+					},
 				}
 
 				err = k8sClient.Create(ctx, gateway)
