@@ -12,7 +12,6 @@ var _ = Describe("HTTPRoute Controller", func() {
 
 			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
 			// Example: If you expect a certain status condition after reconciliation, verify it here.
-			Expect(nil).To(BeNil())
 		})
 	})
 })
