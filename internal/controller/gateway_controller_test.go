@@ -120,7 +120,7 @@ var _ = Describe("Gateway controller", func() {
 						Status: metav1.ConditionTrue,
 						Reason: "Reconciling",
 						Message: fmt.Sprintf(
-							"Deployment for custom resource (%s) with %d replicas created successfully",
+							"Deployment for Gateway (%s) created successfully",
 							gateway.Name),
 					}
 					if latestStatusCondition != expectedLatestStatusCondition {

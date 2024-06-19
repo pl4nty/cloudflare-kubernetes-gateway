@@ -316,7 +316,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	}
 
 	// if GatewayClass has no other Gateways, remove its finalizer
-	gateways := &gatewayv1.GatewayList{Items: []gatewayv1.Gateway{{Spec: gatewayv1.GatewaySpec{GatewayClassName: cr.Spec.GatewayClassName}}}}
+	gateways := &gatewayv1.GatewayList{Items: []gatewayv1.Gateway{{Spec: gatewayv1.GatewaySpec{GatewayClassName: gateway.Spec.GatewayClassName}}}}
 	if err := r.List(ctx, gateways); err != nil {
 		log.Error(err, "Failed to list Gateways")
 		return err
@@ -442,6 +442,7 @@ func labelsForGateway(name string) map[string]string {
 	return map[string]string{"app.kubernetes.io/name": "cloudflare-kubernetes-gateway",
 		"app.kubernetes.io/version":    imageTag,
 		"app.kubernetes.io/managed-by": "GatewayController",
+		"cfargotunnel.com/name": name,
 	}
 }
 
@@ -451,7 +452,7 @@ func imageForGateway() (string, error) {
 	var imageEnvVar = "GATEWAY_IMAGE"
 	image, found := os.LookupEnv(imageEnvVar)
 	if !found {
-		return "", fmt.Errorf("Unable to find %s environment variable with the image", imageEnvVar)
+		return "", fmt.Errorf("unable to find %s environment variable with the image", imageEnvVar)
 	}
 	return image, nil
 }
