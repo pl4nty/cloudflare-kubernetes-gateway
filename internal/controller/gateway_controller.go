@@ -30,6 +30,7 @@ import (
 
 const gatewayClassFinalizer = "gateway-exists-finalizer.gateway.networking.k8s.io"
 const gatewayFinalizer = "cfargotunnel.com/finalizer"
+const controllerName = "github.com/pl4nty/cloudflare-kubernetes-gateway"
 
 // GatewayReconciler reconciles a Gateway object
 type GatewayReconciler struct {
@@ -61,6 +62,8 @@ type GatewayReconciler struct {
 // - About Operator Pattern: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
 // - About Controllers: https://kubernetes.io/docs/concepts/architecture/controller/
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
+//
+//nolint:gocyclo
 func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
@@ -93,7 +96,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		log.Error(err, "Failed to get gatewayclass")
 		return ctrl.Result{}, err
 	}
-	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {
+	if gatewayClass.Spec.ControllerName != controllerName {
 		log.Info("Ignoring gateway with non-matching GatewayClass")
 		return ctrl.Result{}, nil
 	}
@@ -442,7 +445,7 @@ func labelsForGateway(name string) map[string]string {
 	return map[string]string{"app.kubernetes.io/name": "cloudflare-kubernetes-gateway",
 		"app.kubernetes.io/version":    imageTag,
 		"app.kubernetes.io/managed-by": "GatewayController",
-		"cfargotunnel.com/name": name,
+		"cfargotunnel.com/name":        name,
 	}
 }
 
