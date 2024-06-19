@@ -32,9 +32,7 @@ jobs:
           version: latest
           args: --timeout=10m
 
-      - run: |
-        make test
-        make install
+      - run: make test
 
   conformance:
     runs-on: ubuntu-latest
