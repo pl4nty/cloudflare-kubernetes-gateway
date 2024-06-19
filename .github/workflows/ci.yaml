@@ -32,10 +32,7 @@ jobs:
           version: latest
           args: --timeout=10m
 
-      - run: |
-          go build -v ./...
-          make envtest
-      - uses: robherley/go-test-action@v0.4.1
+      - run: make test
 
   conformance:
     runs-on: ubuntu-latest
