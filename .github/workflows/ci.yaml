@@ -27,14 +27,9 @@ jobs:
         with:
           go-version: stable
 
-      - uses: golangci/golangci-lint-action@v6.0.1
-        with:
-          version: latest
-          args: --timeout=10m
+      - run: make lint test
 
-      - run: make test
-
-  conformance:
+  e2e:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -53,19 +48,21 @@ jobs:
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0
 
-      - name: Deploy controller
-        run: |
-          kubectl apply -k gateway-api/config/crd
-          make deploy
-          kubectl create secret -n default generic gateway-conformance \
-          --from-literal=ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} \
-          --from-literal=TOKEN=${{ secrets.CLOUDFLARE_TOKEN }}
-          kubectl apply -f .github/gateway-class.yaml
+      - run: make test-e2e
 
-      - uses: robherley/go-test-action@v0.4.1
-        with:
-          moduleDirectory: gateway-api
-          testArguments: ./conformance -run TestConformance -args --cleanup-base-resources=false --conformance-profiles=GATEWAY-HTTP
+      # - name: Deploy controller
+      #   run: |
+      #     kubectl apply -k gateway-api/config/crd
+      #     make deploy
+      #     kubectl create secret -n default generic gateway-conformance \
+      #     --from-literal=ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} \
+      #     --from-literal=TOKEN=${{ secrets.CLOUDFLARE_TOKEN }}
+      #     kubectl apply -f .github/gateway-class.yaml
+
+      # - uses: robherley/go-test-action@v0.4.1
+      #   with:
+      #     moduleDirectory: gateway-api
+      #     testArguments: ./conformance -run TestConformance -args --cleanup-base-resources=false --conformance-profiles=GATEWAY-HTTP
 
       - name: Get manager logs
         if: ${{ !cancelled() }}
