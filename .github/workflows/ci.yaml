@@ -40,12 +40,12 @@ jobs:
         with:
           go-version: stable
 
-      - name: Checkout API repo
-        uses: actions/checkout@v4.1.6
-        with:
-          repository: kubernetes-sigs/gateway-api
-          ref: v1.1.0
-          path: gateway-api
+      # - name: Checkout API repo
+      #   uses: actions/checkout@v4.1.6
+      #   with:
+      #     repository: kubernetes-sigs/gateway-api
+      #     ref: v1.1.0
+      #     path: gateway-api
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0
         with:
