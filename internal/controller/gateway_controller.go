@@ -142,7 +142,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 			// Let's add here a status "Downgrade" to reflect that this resource began its process to be terminated.
 			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-				Status: metav1.ConditionUnknown, Reason: string(gatewayv1.GatewayReasonPending),
+				Status: metav1.ConditionUnknown, Reason: string(gatewayv1.GatewayReasonPending), ObservedGeneration: gateway.Generation + 1,
 				Message: fmt.Sprintf("Performing finalizer operations for the Gateway: %s ", gateway.Name)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
@@ -167,7 +167,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}
 
 			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-				Status: metav1.ConditionTrue, Reason: "Finalizing",
+				Status: metav1.ConditionTrue, Reason: "Finalizing", ObservedGeneration: gateway.Generation + 1,
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", gateway.Name)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
@@ -249,7 +249,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 			// The following implementation will update the status
 			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-				Status: metav1.ConditionFalse, Reason: "Reconciling",
+				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation + 1,
 				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
@@ -280,7 +280,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// The following implementation will update the status
 	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonAccepted),
+		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonAccepted), ObservedGeneration: gateway.Generation + 1,
 		Message: fmt.Sprintf("Deployment for gateway (%s) created successfully", gateway.Name)})
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
