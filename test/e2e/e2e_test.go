@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -89,8 +90,15 @@ var _ = Describe("controller", Ordered, func() {
 			}
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
 
-			By("creating the custom resource for the Kind GatewayClass")
+			By("creating the GatewayClass")
 			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/gatewayclass.yaml")
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			By("creating the Gateway Secret")
+			cmd = exec.Command("kubectl", "create", "secret", "generic", "gateway-conformance",
+				"--from-literal=ACCOUNT_ID="+os.Getenv("CLOUDFLARE_ACCOUNT_ID"),
+				"--from-literal=TOKEN=", os.Getenv("CLOUDFLARE_API_TOKEN"))
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})

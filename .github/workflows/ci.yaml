@@ -45,15 +45,9 @@ jobs:
         with:
           cluster_name: kind
       - run: make test-e2e
-
-      # - name: Deploy controller
-      #   run: |
-      #     kubectl apply -k gateway-api/config/crd
-      #     make deploy
-      #     kubectl create secret -n default generic gateway-conformance \
-      #     --from-literal=ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} \
-      #     --from-literal=TOKEN=${{ secrets.CLOUDFLARE_TOKEN }}
-      #     kubectl apply -f .github/gateway-class.yaml
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Get manager logs
         if: ${{ !cancelled() }}
