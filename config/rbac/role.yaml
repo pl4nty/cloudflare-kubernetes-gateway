@@ -10,6 +10,7 @@ rules:
   - deployments
   verbs:
   - create
+  - list
 - apiGroups:
   - ""
   resources:
@@ -28,6 +29,7 @@ rules:
   - gatewayclasses
   verbs:
   - get
+  - list
   - watch
 - apiGroups:
   - gateway.networking.k8s.io
@@ -66,4 +68,5 @@ rules:
   resources:
   - httproutes
   verbs:
+  - list
   - watch
