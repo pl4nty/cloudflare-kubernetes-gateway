@@ -90,8 +90,8 @@ var _ = Describe("controller", Ordered, func() {
 			}
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
 
-			By("undeploying the controller-manager")
-			cmd = exec.Command("make", "undeploy")
+			By("deleting the controller-manager deployment")
+			cmd = exec.Command("kubectl", "delete", "deployment", "controller-manager", "-n", namespace)
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
