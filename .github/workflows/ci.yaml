@@ -40,17 +40,10 @@ jobs:
         with:
           go-version: stable
 
-      # - name: Checkout API repo
-      #   uses: actions/checkout@v4.1.6
-      #   with:
-      #     repository: kubernetes-sigs/gateway-api
-      #     ref: v1.1.0
-      #     path: gateway-api
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0
         with:
           cluster_name: kind
-
       - run: make test-e2e
 
       # - name: Deploy controller
@@ -61,11 +54,6 @@ jobs:
       #     --from-literal=ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} \
       #     --from-literal=TOKEN=${{ secrets.CLOUDFLARE_TOKEN }}
       #     kubectl apply -f .github/gateway-class.yaml
-
-      # - uses: robherley/go-test-action@v0.4.1
-      #   with:
-      #     moduleDirectory: gateway-api
-      #     testArguments: ./conformance -run TestConformance -args --cleanup-base-resources=false --conformance-profiles=GATEWAY-HTTP
 
       - name: Get manager logs
         if: ${{ !cancelled() }}
