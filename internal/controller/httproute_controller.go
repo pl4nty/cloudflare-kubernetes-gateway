@@ -28,7 +28,8 @@ type HTTPRouteReconciler struct {
 }
 
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=list
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
