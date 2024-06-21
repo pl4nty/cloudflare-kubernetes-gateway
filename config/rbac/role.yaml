@@ -10,7 +10,9 @@ rules:
   - deployments
   verbs:
   - create
+  - get
   - list
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -23,6 +25,7 @@ rules:
   - secrets
   verbs:
   - get
+  - watch
 - apiGroups:
   - gateway.networking.k8s.io
   resources:
