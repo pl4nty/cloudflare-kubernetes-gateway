@@ -65,14 +65,14 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			Status:             metav1.ConditionFalse,
 			Reason:             string(gatewayv1.GatewayClassReasonInvalidParameters),
 			Message:            "Unable to initialize Cloudflare API from secret in GatewayClass parameterRef. Ensure ACCOUNT_ID and TOKEN are set",
-			ObservedGeneration: gatewayClass.Generation + 1,
+			ObservedGeneration: gatewayClass.Generation,
 		}
 	} else {
 		condition = metav1.Condition{
 			Type:               string(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:             metav1.ConditionTrue,
 			Reason:             string(gatewayv1.GatewayClassReasonAccepted),
-			ObservedGeneration: gatewayClass.Generation + 1,
+			ObservedGeneration: gatewayClass.Generation,
 		}
 	}
 
