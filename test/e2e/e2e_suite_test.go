@@ -17,7 +17,8 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "e2e suite")
 
 	fmt.Fprintf(GinkgoWriter, "Starting gateway-api conformance suite\n") //nolint:errcheck
-	flag.Set("cleanup-base-resources", "false")
-	flag.Set("conformance-profiles", "GATEWAY-HTTP")
+	if flag.Set("cleanup-base-resources", "false") != nil || flag.Set("conformance-profiles", "GATEWAY-HTTP") != nil {
+		t.Fatal("Failed to set conformance flags")
+	}
 	conformance.RunConformance(t)
 }

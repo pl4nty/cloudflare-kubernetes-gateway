@@ -90,7 +90,7 @@ var _ = Describe("controller", Ordered, func() {
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
 
 			By("creating the custom resource for the Kind GatewayClass")
-			cmd = exec.Command("kubectl", "apply", "-f", "gatewayclass.yaml")
+			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/gatewayclass.yaml")
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})
