@@ -36,17 +36,20 @@ jobs:
       checks: write
     steps:
       - uses: actions/checkout@v4.1.6
+      - uses: actions/setup-go@v5.0.1
+        with:
+          go-version: stable
+
       - name: Checkout API repo
         uses: actions/checkout@v4.1.6
         with:
           repository: kubernetes-sigs/gateway-api
           ref: v1.1.0
           path: gateway-api
-      - uses: actions/setup-go@v5.0.1
-        with:
-          go-version: stable
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: kind
 
       - run: make test-e2e
 
