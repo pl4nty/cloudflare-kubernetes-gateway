@@ -1,8 +1,8 @@
 package e2e
 
 import (
+	"flag"
 	"fmt"
-	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -17,6 +17,7 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "e2e suite")
 
 	fmt.Fprintf(GinkgoWriter, "Starting gateway-api conformance suite\n") //nolint:errcheck
-	os.Args = []string{"noop", "--cleanup-base-resources=false", "--conformance-profiles=GATEWAY-HTTP"}
+	flag.Set("cleanup-base-resources", "false")
+	flag.Set("conformance-profiles", "GATEWAY-HTTP")
 	conformance.RunConformance(t)
 }

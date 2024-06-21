@@ -26,6 +26,7 @@ type HTTPRouteReconciler struct {
 	Scheme    *runtime.Scheme
 	Namespace string
 }
+
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
