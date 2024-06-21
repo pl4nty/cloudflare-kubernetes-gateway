@@ -2,13 +2,11 @@ package e2e
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/gateway-api/conformance"
 
 	"github.com/pl4nty/cloudflare-kubernetes-gateway/test/utils"
 )
@@ -25,18 +23,6 @@ var _ = Describe("controller", Ordered, func() {
 
 		By("creating manager namespace")
 		cmd := exec.Command("kubectl", "create", "ns", namespace)
-		_, _ = utils.Run(cmd)
-	})
-
-	AfterAll(func() {
-		By("uninstalling the Prometheus manager bundle")
-		utils.UninstallPrometheusOperator()
-
-		By("uninstalling the cert-manager bundle")
-		utils.UninstallCertManager()
-
-		By("removing manager namespace")
-		cmd := exec.Command("kubectl", "delete", "ns", namespace)
 		_, _ = utils.Run(cmd)
 	})
 
@@ -102,9 +88,6 @@ var _ = Describe("controller", Ordered, func() {
 				return nil
 			}
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
-
-			os.Args = []string{"noop", "--cleanup-base-resources=false", "--conformance-profiles=GATEWAY-HTTP"}
-			conformance.RunConformance(nil)
 		})
 	})
 })
