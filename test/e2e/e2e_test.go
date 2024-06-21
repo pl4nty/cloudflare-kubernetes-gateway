@@ -90,8 +90,9 @@ var _ = Describe("controller", Ordered, func() {
 			}
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
 
+			// undeploy deletes the namespace
 			By("deleting the controller-manager deployment")
-			cmd = exec.Command("kubectl", "delete", "deployment", "controller-manager", "-n", namespace)
+			cmd = exec.Command("kubectl", "delete", "deployment", "cloudflare-controller-manager", "-n", namespace)
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
