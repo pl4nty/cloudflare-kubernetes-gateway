@@ -98,7 +98,8 @@ var _ = Describe("controller", Ordered, func() {
 			By("creating the Gateway Secret")
 			cmd = exec.Command("kubectl", "create", "secret", "generic", "gateway-conformance",
 				"--from-literal=ACCOUNT_ID="+os.Getenv("CLOUDFLARE_ACCOUNT_ID"),
-				"--from-literal=TOKEN="+os.Getenv("CLOUDFLARE_API_TOKEN"))
+				"--from-literal=TOKEN="+os.Getenv("CLOUDFLARE_API_TOKEN"),
+				"-n", namespace)
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})
