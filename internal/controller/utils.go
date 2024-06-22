@@ -18,7 +18,7 @@ func InitCloudflareApi(ctx context.Context, c client.Client, gatewayClassName st
 
 	gatewayClass := &gw.GatewayClass{}
 	if err := c.Get(ctx, types.NamespacedName{Name: gatewayClassName}, gatewayClass); err != nil {
-		log.Error(err, "unable to fetch GatewayClass")
+		log.Error(err, "Failed to get gatewayclass")
 		return "", nil, err
 	}
 	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {

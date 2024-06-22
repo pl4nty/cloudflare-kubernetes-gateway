@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	gw "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // HTTPRouteReconciler reconciles a HTTPRoute object
@@ -27,25 +27,25 @@ type HTTPRouteReconciler struct {
 	Namespace string
 }
 
-//+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes/finalizers,verbs=update
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=list
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=list;watch
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 //
-// This is very inefficient, especially the API calls. But it shouldn't matter for small deployments.
-//
 // For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.0/pkg/reconcile
-
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
+//
+//nolint:gocyclo
 func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
 	// TODO delete DNS records. load all hostnames via tunnel ID in comment? but can't get DNS zone...
-	target := &gw.HTTPRoute{}
-	gateways := []gw.Gateway{}
-	hostnames := []gw.Hostname{}
+	target := &gatewayv1.HTTPRoute{}
+	gateways := []gatewayv1.Gateway{}
+	hostnames := []gatewayv1.Hostname{}
 	err := r.Get(ctx, req.NamespacedName, target)
 	if err == nil {
 		for _, parentRef := range target.Spec.ParentRefs {
@@ -53,7 +53,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if parentRef.Namespace != nil {
 				namespace = string(*parentRef.Namespace)
 			}
-			gateway := &gw.Gateway{}
+			gateway := &gatewayv1.Gateway{}
 			if err := r.Get(ctx, types.NamespacedName{
 				Namespace: namespace,
 				Name:      string(parentRef.Name),
@@ -66,7 +66,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		hostnames = target.Spec.Hostnames
 	} else {
-		gatewayList := &gw.GatewayList{}
+		gatewayList := &gatewayv1.GatewayList{}
 		if err := r.List(ctx, gatewayList); err != nil {
 			log.Error(err, "Failed to list Gateways")
 			return ctrl.Result{}, err
@@ -74,7 +74,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		gateways = gatewayList.Items
 	}
 
-	routes := &gw.HTTPRouteList{}
+	routes := &gatewayv1.HTTPRouteList{}
 	if err := r.List(ctx, routes); err != nil {
 		log.Error(err, "Failed to list HTTPRoutes")
 		return ctrl.Result{}, err
@@ -82,7 +82,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	for _, gateway := range gateways {
 		// check target is in scope
-		gatewayClass := &gw.GatewayClass{}
+		gatewayClass := &gatewayv1.GatewayClass{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name: string(gateway.Spec.GatewayClassName),
 		}, gatewayClass); err != nil {
@@ -95,7 +95,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// search for sibling routes
-		siblingRoutes := []gw.HTTPRoute{}
+		siblingRoutes := []gatewayv1.HTTPRoute{}
 		for _, searchRoute := range routes.Items {
 			for _, searchParent := range searchRoute.Spec.ParentRefs {
 				namespace := searchRoute.ObjectMeta.Namespace
@@ -262,7 +262,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&gw.HTTPRoute{}).
+		For(&gatewayv1.HTTPRoute{}).
 		Complete(r)
 }
 

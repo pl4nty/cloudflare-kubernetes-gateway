@@ -5,6 +5,17 @@
 domain: networking.k8s.io
 layout:
 - go.kubebuilder.io/v4
+plugins:
+  deploy-image.go.kubebuilder.io/v1-alpha:
+    resources:
+    - domain: networking.k8s.io
+      group: gateway
+      kind: Gateway
+      options:
+        containerCommand: tunnel --no-autoupdate --metrics 0.0.0.0:2000 run --token
+        image: cloudflare/cloudflared:2024.5.0
+        runAsUser: "1001"
+      version: v1
 projectName: cloudflare-kubernetes-gateway
 repo: github.com/pl4nty/cloudflare-kubernetes-gateway
 resources:
