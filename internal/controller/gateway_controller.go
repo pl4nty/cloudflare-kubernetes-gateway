@@ -423,7 +423,7 @@ func (r *GatewayReconciler) deploymentForGateway(
 								},
 							},
 						},
-						Command: []string{"tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run", "--token", token},
+						Args: []string{"tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run", "--token", token},
 					}},
 				},
 			},
