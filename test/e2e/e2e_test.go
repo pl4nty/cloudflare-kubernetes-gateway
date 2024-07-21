@@ -90,11 +90,6 @@ var _ = Describe("controller", Ordered, func() {
 			}
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
 
-			By("creating the GatewayClass")
-			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/gatewayclass.yaml")
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
 			By("creating the Gateway Secret")
 			cmd = exec.Command("kubectl", "create", "secret", "generic", "gateway-conformance",
 				"--from-literal=ACCOUNT_ID="+os.Getenv("CLOUDFLARE_ACCOUNT_ID"),
@@ -103,18 +98,17 @@ var _ = Describe("controller", Ordered, func() {
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
+			By("creating the GatewayClass")
+			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/gatewayclass.yaml")
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
 			By("logging appropriate details")
 			cmd = exec.Command("kubectl", "logs", "deployment/cloudflare-controller-manager", "-n", namespace)
 			var output []byte
 			output, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			fmt.Fprintf(GinkgoWriter, "controller-manager logs: %s\n", string(output))
-
-			// undeploy deletes the namespace
-			By("deleting the controller-manager deployment")
-			cmd = exec.Command("kubectl", "delete", "deployment", "cloudflare-controller-manager", "-n", namespace)
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			fmt.Fprint(GinkgoWriter, string(output))
 		})
 	})
 })

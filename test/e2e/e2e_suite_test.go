@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/sets"
+	log "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/gateway-api/conformance"
 	conformancev1 "sigs.k8s.io/gateway-api/conformance/apis/v1"
 	"sigs.k8s.io/gateway-api/conformance/utils/suite"
@@ -33,5 +34,6 @@ func TestE2E(t *testing.T) {
 		Version:      "latest",
 	}
 	opts.ReportOutputPath = "standard-latest-default-report.yaml"
+	log.SetLogger(GinkgoLogr)
 	conformance.RunConformanceWithOptions(t, opts)
 }
