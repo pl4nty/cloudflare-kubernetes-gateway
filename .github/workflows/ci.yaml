@@ -53,7 +53,7 @@ jobs:
         run: |
           kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
           for pod in $(kubectl get pods -n gateway-conformance-infra -o name); do kubectl logs -n gateway-conformance-infra $pod; done
-          kubectl describe -n gateway-conformance-infra deployment/all-namespaces
+          kubectl describe -n gateway-conformance-infra deployment/cloudflare-all-namespaces
 
       - name: Upload conformance report
         uses: actions/upload-artifact@v4.3.4
