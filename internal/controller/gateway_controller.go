@@ -322,7 +322,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 		// prepare for deletion - disconnect, after rotating secret to prevent reconnect
 		if _, err := api.ZeroTrust.Tunnels.Edit(ctx, tunnel.Result[0].ID, zero_trust.TunnelEditParams{
 			AccountID:    cloudflare.String(account),
-			TunnelSecret: cloudflare.String("delete"),
+			TunnelSecret: cloudflare.String("Vm0xd1MwMUhSWGhYV0d4VlYwZG9jVlZ0TVRSV01XeHpZVWR3VUZWVU1Eaz0="),
 		}); err != nil {
 			log.Error(err, "Failed to update tunnel secret")
 			return err
