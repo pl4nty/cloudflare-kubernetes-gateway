@@ -363,7 +363,7 @@ func (r *GatewayReconciler) deploymentForGateway(
 
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      gateway.Name,
+			Name:      "cloudflare-gateway-" + gateway.Name,
 			Namespace: gateway.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
