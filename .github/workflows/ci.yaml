@@ -49,7 +49,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Get manager logs
-        if: ${{ !cancelled() }}
+        if: ${{ always() }}
         run: kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
 
       - name: Upload conformance report
