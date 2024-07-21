@@ -364,7 +364,7 @@ func (r *GatewayReconciler) deploymentForGateway(
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gateway.Name,
-			Namespace: r.Namespace,
+			Namespace: gateway.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
