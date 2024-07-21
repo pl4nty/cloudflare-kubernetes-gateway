@@ -102,6 +102,19 @@ var _ = Describe("controller", Ordered, func() {
 				"-n", namespace)
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			By("logging appropriate details")
+			cmd = exec.Command("kubectl", "logs", "deployment", "cloudflare-controller-manager", "-n", namespace)
+			var output []byte
+			output, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			fmt.Fprintf(GinkgoWriter, "controller-manager logs: %s\n", string(output))
+
+			// undeploy deletes the namespace
+			By("deleting the controller-manager deployment")
+			cmd = exec.Command("kubectl", "delete", "deployment", "cloudflare-controller-manager", "-n", namespace)
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})
 	})
 })

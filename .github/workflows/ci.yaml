@@ -49,10 +49,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      - name: Get manager logs
-        if: ${{ !cancelled() }}
-        run: kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
-
   release-please:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
