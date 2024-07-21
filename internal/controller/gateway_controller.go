@@ -211,6 +211,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			AccountID:    cloudflare.String(account),
 			Name:         cloudflare.String(gateway.Name),
 			TunnelSecret: cloudflare.String("AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg="),
+			// config_src = cloudflare
 		})
 		if err != nil {
 			log.Error(err, "Failed to create tunnel")
@@ -317,6 +318,21 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 
 	if len(tunnel.Result) > 0 {
 		log.Info("Deleting Tunnel")
+
+		// prepare for deletion - disconnect, after rotating secret to prevent reconnect
+		if _, err := api.ZeroTrust.Tunnels.Edit(ctx, tunnel.Result[0].ID, zero_trust.TunnelEditParams{
+			TunnelSecret: cloudflare.String(""),
+		}); err != nil {
+			log.Error(err, "Failed to update tunnel secret")
+			return err
+		}
+		if _, err := api.ZeroTrust.Tunnels.Connections.Delete(ctx, tunnel.Result[0].ID, zero_trust.TunnelConnectionDeleteParams{
+			AccountID: cloudflare.String(account),
+		}); err != nil {
+			log.Error(err, "Failed to delete tunnel connections")
+			return err
+		}
+
 		if _, err := api.ZeroTrust.Tunnels.Delete(ctx, tunnel.Result[0].ID, zero_trust.TunnelDeleteParams{
 			AccountID: cloudflare.String(account),
 		}); err != nil {
