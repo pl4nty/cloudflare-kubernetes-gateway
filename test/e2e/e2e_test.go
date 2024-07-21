@@ -102,13 +102,6 @@ var _ = Describe("controller", Ordered, func() {
 			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/gatewayclass.yaml")
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			By("logging appropriate details")
-			cmd = exec.Command("kubectl", "logs", "deployment/cloudflare-controller-manager", "-n", namespace)
-			var output []byte
-			output, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			fmt.Fprint(GinkgoWriter, string(output))
 		})
 	})
 })

@@ -20,6 +20,7 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "e2e suite")
 
 	fmt.Fprintf(GinkgoWriter, "Starting gateway-api conformance suite\n") //nolint:errcheck
+	log.SetLogger(GinkgoLogr)
 	opts := conformance.DefaultOptions(t)
 	opts.CleanupBaseResources = false
 	opts.ConformanceProfiles = sets.New(
@@ -34,6 +35,5 @@ func TestE2E(t *testing.T) {
 		Version:      "latest",
 	}
 	opts.ReportOutputPath = "standard-latest-default-report.yaml"
-	log.SetLogger(GinkgoLogr)
 	conformance.RunConformanceWithOptions(t, opts)
 }
