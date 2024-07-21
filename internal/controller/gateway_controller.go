@@ -243,7 +243,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Check if the deployment already exists, if not create a new one
 	found := &appsv1.Deployment{}
-	err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+	err = r.Get(ctx, types.NamespacedName{Name: "cloudflare-" + gateway.Name, Namespace: gateway.Namespace}, found)
 	// TODO update existing deployment eg image changes
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new deployment
@@ -363,7 +363,7 @@ func (r *GatewayReconciler) deploymentForGateway(
 
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cloudflare-gateway-" + gateway.Name,
+			Name:      "cloudflare-" + gateway.Name,
 			Namespace: gateway.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
