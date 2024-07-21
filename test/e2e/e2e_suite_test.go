@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pl4nty/cloudflare-kubernetes-gateway/test/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
 	log "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/gateway-api/conformance"
@@ -20,6 +21,11 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "e2e suite")
 
 	fmt.Fprintf(GinkgoWriter, "Starting gateway-api conformance suite\n") //nolint:errcheck
+	version, err := utils.GetProjectVersion()
+	if err != nil {
+		t.Fatalf("failed to get project version: %v", err)
+	}
+
 	log.SetLogger(GinkgoLogr)
 	opts := conformance.DefaultOptions(t)
 	opts.CleanupBaseResources = false
@@ -32,8 +38,8 @@ func TestE2E(t *testing.T) {
 		Organization: "pl4nty",
 		Project:      "cloudflare-kubernetes-gateway",
 		URL:          "https://github.com/pl4nty/cloudflare-kubernetes-gateway",
-		Version:      "latest",
+		Version:      version,
 	}
-	opts.ReportOutputPath = "standard-latest-default-report.yaml"
+	opts.ReportOutputPath = "standard-" + version + "-default-report.yaml"
 	conformance.RunConformanceWithOptions(t, opts)
 }

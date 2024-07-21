@@ -32,8 +32,11 @@ var _ = Describe("controller", Ordered, func() {
 			var controllerPodName string
 			var err error
 
+			version, err := utils.GetProjectVersion()
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
 			// projectimage stores the name of the image used in the example
-			var projectimage = "example.com/cloudflare-kubernetes-gateway:v0.0.1"
+			var projectimage = "example.com/cloudflare-kubernetes-gateway:" + version
 
 			By("building the manager(Operator) image")
 			cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage))
