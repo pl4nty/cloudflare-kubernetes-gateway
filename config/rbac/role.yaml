@@ -5,6 +5,21 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+- apiGroups:
   - ""
   resources:
   - secrets
@@ -13,27 +28,12 @@ rules:
   - list
   - watch
 - apiGroups:
-  - apps
-  resources:
-  - deployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - gateway.networking.k8s.io
   resources:
   - gatewayclasses
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
   - update
   - watch
 - apiGroups:
@@ -47,8 +47,6 @@ rules:
   resources:
   - gatewayclasses/status
   verbs:
-  - get
-  - patch
   - update
 - apiGroups:
   - gateway.networking.k8s.io
@@ -57,7 +55,6 @@ rules:
   verbs:
   - get
   - list
-  - patch
   - update
   - watch
 - apiGroups:
@@ -71,32 +68,11 @@ rules:
   resources:
   - gateways/status
   verbs:
-  - get
-  - patch
   - update
 - apiGroups:
   - gateway.networking.k8s.io
   resources:
   - httproutes
   verbs:
-  - create
-  - delete
-  - get
   - list
-  - patch
-  - update
   - watch
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - httproutes/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - httproutes/status
-  verbs:
-  - get
-  - patch
-  - update

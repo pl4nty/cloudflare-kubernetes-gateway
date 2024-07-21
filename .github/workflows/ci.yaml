@@ -27,50 +27,36 @@ jobs:
         with:
           go-version: stable
 
-      - uses: golangci/golangci-lint-action@v6.0.1
-        with:
-          version: latest
-          args: --timeout=10m
+      - run: make lint test
 
-      - run: go build -v ./...
-      - uses: robherley/go-test-action@v0.4.1
-
-  conformance:
+  e2e:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
     steps:
       - uses: actions/checkout@v4.1.6
-      - name: Checkout API repo
-        uses: actions/checkout@v4.1.6
-        with:
-          repository: kubernetes-sigs/gateway-api
-          ref: v1.1.0
-          path: gateway-api
       - uses: actions/setup-go@v5.0.1
         with:
           go-version: stable
+
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0
-
-      - name: Deploy controller
-        run: |
-          kubectl apply -k gateway-api/config/crd
-          make deploy
-          kubectl create secret -n default generic gateway-conformance \
-          --from-literal=ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} \
-          --from-literal=TOKEN=${{ secrets.CLOUDFLARE_TOKEN }}
-          kubectl apply -f .github/gateway-class.yaml
-
-      - uses: robherley/go-test-action@v0.4.1
         with:
-          moduleDirectory: gateway-api
-          testArguments: ./conformance -run TestConformance -args --supported-features=Gateway,HTTPRoute --cleanup-base-resources=false
-
+          cluster_name: kind
+      - run: make test-e2e
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Get manager logs
-        if: ${{ !cancelled() }}
+        if: ${{ always() }}
         run: kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
+
+      - name: Upload conformance report
+        uses: actions/upload-artifact@v4.3.4
+        with:
+          name: conformance-report
+          path: '*-report.yaml'
 
   release-please:
     if: github.ref == 'refs/heads/main'
@@ -89,7 +75,7 @@ jobs:
   release:
     needs:
       - scan
-    if: needs.prep.outputs.releases_created
+    if: needs.release-please.outputs.releases_created
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -109,6 +95,6 @@ jobs:
           go-version: stable
       - uses: goreleaser/goreleaser-action@v6.0.0
         with:
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ github.token }}

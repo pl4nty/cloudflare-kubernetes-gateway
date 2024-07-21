@@ -3,11 +3,7 @@ kind: Namespace
 metadata:
   labels:
     control-plane: controller-manager
-    app.kubernetes.io/name: namespace
-    app.kubernetes.io/instance: system
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: cloudflare-kubernetes-gateway
-    app.kubernetes.io/part-of: cloudflare-kubernetes-gateway
+    app.kubernetes.io/name: cloudflare-kubernetes-gateway
     app.kubernetes.io/managed-by: kustomize
   name: system
 ---
@@ -18,11 +14,7 @@ metadata:
   namespace: system
   labels:
     control-plane: controller-manager
-    app.kubernetes.io/name: deployment
-    app.kubernetes.io/instance: controller-manager
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: cloudflare-kubernetes-gateway
-    app.kubernetes.io/part-of: cloudflare-kubernetes-gateway
+    app.kubernetes.io/name: cloudflare-kubernetes-gateway
     app.kubernetes.io/managed-by: kustomize
 spec:
   selector:
@@ -36,22 +28,43 @@ spec:
       labels:
         control-plane: controller-manager
     spec:
-      # no nodeAffinity, to support all current and future platforms with https://github.com/ko-build/ko
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values:
+                    - amd64
+                    - arm64
+                    - ppc64le
+                    - s390x
+                - key: kubernetes.io/os
+                  operator: In
+                  values:
+                    - linux
       securityContext:
         runAsNonRoot: true
-        runAsUser: 65532
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - args:
-        - --leader-elect
-        image: controller
+      - command:
+        - /manager
+        args:
+          - --leader-elect
+          - --health-probe-bind-address=:8081
+        image: controller:latest
         name: manager
+        env:
+        - name: GATEWAY_IMAGE
+          # renovate: datasource=docker
+          value: "cloudflare/cloudflared:2024.5.0"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
-              - "ALL"
+            - "ALL"
         livenessProbe:
           httpGet:
             path: /healthz
@@ -64,10 +77,12 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
+        # docs recommend 1 core per 1GB RAM
+        # https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/system-requirements/#recommendations
         resources:
           limits:
-            cpu: 100m
-            memory: 128Mi
+            cpu: 500m
+            memory: 512Mi
           requests:
             cpu: 10m
             memory: 64Mi
