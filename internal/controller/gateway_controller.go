@@ -317,7 +317,9 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 
 	if len(tunnel.Result) > 0 {
 		log.Info("Deleting Tunnel")
-		if _, err := api.ZeroTrust.Tunnels.Delete(ctx, tunnel.Result[0].ID, zero_trust.TunnelDeleteParams{}); err != nil {
+		if _, err := api.ZeroTrust.Tunnels.Delete(ctx, tunnel.Result[0].ID, zero_trust.TunnelDeleteParams{
+			AccountID: cloudflare.String(account),
+		}); err != nil {
 			log.Error(err, "Failed to delete tunnel")
 			return err
 		}

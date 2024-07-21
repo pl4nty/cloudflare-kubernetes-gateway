@@ -80,7 +80,7 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	meta.SetStatusCondition(&gatewayClass.Status.Conditions, condition)
 	if err := r.Status().Update(ctx, gatewayClass); err != nil {
 		log.Error(err, "Failed to update GatewayClass status. Retrying in 1 minute")
-		return ctrl.Result{RequeueAfter: time.Minute}, err
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
 	return ctrl.Result{}, nil
