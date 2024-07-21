@@ -48,9 +48,11 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      - name: Get manager logs
+      - name: Get manager and gateway logs
         if: ${{ always() }}
-        run: kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
+        run: |
+          kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
+          for pod in $(kubectl get pods -n gateway-conformance-infra -o name); do kubectl logs -n gateway-conformance-infra $pod; done
 
       - name: Upload conformance report
         uses: actions/upload-artifact@v4.3.4
