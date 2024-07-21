@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -78,8 +79,8 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	meta.SetStatusCondition(&gatewayClass.Status.Conditions, condition)
 	if err := r.Status().Update(ctx, gatewayClass); err != nil {
-		log.Error(err, "Failed to update GatewayClass status")
-		return ctrl.Result{}, err
+		log.Error(err, "Failed to update GatewayClass status. Retrying in 1 minute")
+		return ctrl.Result{RequeueAfter: time.Minute}, err
 	}
 
 	return ctrl.Result{}, nil
