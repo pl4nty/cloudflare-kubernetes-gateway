@@ -28,7 +28,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-const gatewayClassFinalizer = "gateway-exists-finalizer.gateway.networking.k8s.io"
+const gatewayClassFinalizer = "cfargotunnel.com/finalizer"
 const gatewayFinalizer = "cfargotunnel.com/finalizer"
 const controllerName = "github.com/pl4nty/cloudflare-kubernetes-gateway"
 
@@ -46,7 +46,7 @@ type GatewayReconciler struct {
 
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get;update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses/finalizers,verbs=update
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;update;watch
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/finalizers,verbs=update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;watch
