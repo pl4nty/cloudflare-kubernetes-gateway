@@ -104,7 +104,7 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("logging appropriate details")
-			cmd = exec.Command("kubectl", "logs", "deployment", "cloudflare-controller-manager", "-n", namespace)
+			cmd = exec.Command("kubectl", "logs", "deployment/cloudflare-controller-manager", "-n", namespace)
 			var output []byte
 			output, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
