@@ -125,7 +125,7 @@ func GetProjectDir() (string, error) {
 
 // GetProjectVersion will return the project version
 func GetProjectVersion() (string, error) {
-	cmd := exec.Command("git", "describe", "--tag", "--always", "--dirty", "--match 'v[0-9]*'")
+	cmd := exec.Command("git", "describe", "--tag", "--always", "--dirty", "--match", "'v[0-9]*'")
 	version, err := Run(cmd)
 	return string(version), err
 }
