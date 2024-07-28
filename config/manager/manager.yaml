@@ -50,7 +50,7 @@ spec:
           type: RuntimeDefault
       containers:
       - command:
-        - /manager
+        - /ko-app/cmd
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
