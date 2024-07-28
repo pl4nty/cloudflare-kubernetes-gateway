@@ -11,5 +11,3 @@ kos:
     platforms:
       - all
     main: ./cmd
-    # renovate: datasource=docker
-    base_image: "golang:1.22"
