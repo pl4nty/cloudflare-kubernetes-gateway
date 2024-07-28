@@ -72,18 +72,6 @@ jobs:
         with:
           release-type: go
 
-      - name: configure prerelease
-        run: |
-          cat <<EOF > release-please-config.json
-          {
-            "prerelease": true
-          }
-          EOF
-      - uses: googleapis/release-please-action@v4.1.1
-        id: prerelease
-        with:
-          release-type: go
-
   release:
     needs:
       - scan
