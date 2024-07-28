@@ -76,7 +76,7 @@ jobs:
         run: |
           cat <<EOF > release-please-config.json
           {
-            "versioning": "prerelease"
+            "prerelease": true
           }
           EOF
       - uses: googleapis/release-please-action@v4.1.1
