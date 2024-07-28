@@ -65,10 +65,22 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      releases_created: ${{ steps.release.outputs.releases_created }}
+      releases_created: ${{ steps.release.outputs.releases_created || steps.prerelease.outputs.releases_created }}
     steps:
       - uses: googleapis/release-please-action@v4.1.3
         id: release
+        with:
+          release-type: go
+
+      - name: configure prerelease
+        run: |
+          cat <<EOF > release-please-config.json
+          {
+            "versioning": "prerelease"
+          }
+          EOF
+      - uses: googleapis/release-please-action@v4.1.1
+        id: prerelease
         with:
           release-type: go
 
