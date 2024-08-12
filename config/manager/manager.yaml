@@ -54,7 +54,7 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: controller:latest
+        image: controller
         name: manager
         env:
         - name: GATEWAY_IMAGE
