@@ -14,8 +14,10 @@
 * **deps:** update module github.com/onsi/ginkgo/v2 to v2.20.0 ([#130](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/130)) ([6385ac3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/6385ac3ebe95bfa90246ff8b2219747a805c61ad))
 * **deps:** update module github.com/onsi/gomega to v1.34.0 ([#120](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/120)) ([7e03b53](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/7e03b535d8c3a0899cf0f02d83147ea5857d07bb))
 * **deps:** update module sigs.k8s.io/controller-runtime to v0.18.4 ([#116](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/116)) ([dd724cf](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/dd724cf79f3e4566de8dba528b0435984d3121ef))
+* manager entrypoint ([aaa449d](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/aaa449dbd71638449802f2ca4ea08bc3a223bb0c))
 * pin manifest version in README ([ae6ad29](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/ae6ad290d13887e23276ed3881ee8653f8508d76)), closes [#123](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/123)
 * run goreleaser on tags ([3f224ce](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/3f224ce4db5c5cc920da66f82e5793bbd3dcddf2))
+* use non-root base image ([91430fe](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/91430fe96898c2e80e5aa7120915bb5306bfc7bd))
 
 ## [0.5.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.4.0...v0.5.0) (2024-06-10)
 
