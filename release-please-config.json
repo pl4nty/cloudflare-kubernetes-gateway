@@ -1,9 +1,0 @@
-{
-  "packages": {
-    ".": {}
-  },
-  "extra-files": [
-    "README.md",
-    "config/manager/kustomization.yaml"
-  ]
-}
