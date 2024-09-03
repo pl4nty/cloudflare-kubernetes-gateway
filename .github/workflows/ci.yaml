@@ -53,7 +53,7 @@ jobs:
         run: kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
 
       - name: Upload conformance report
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4.4.0
         with:
           name: conformance-report
           path: '*-report.yaml'
