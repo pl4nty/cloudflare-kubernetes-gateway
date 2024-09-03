@@ -30,7 +30,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: gateway
-  namespace: default
+  namespace: cloudflare-gateway
 spec:
   gatewayClassName: cloudflare
   listeners:
