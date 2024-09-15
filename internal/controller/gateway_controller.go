@@ -147,7 +147,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Message: fmt.Sprintf("Performing finalizer operations for the Gateway: %s ", gateway.Name)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway status")
+				log.Error(err, "Failed to update Gateway finalizer status")
 				return ctrl.Result{}, err
 			}
 
@@ -172,7 +172,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", gateway.Name)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway status")
+				log.Error(err, "Failed to update Gateway finalizer status")
 				return ctrl.Result{}, err
 			}
 
@@ -300,8 +300,13 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			Message: fmt.Sprintf("No valid listeners for gateway (%s)", gateway.Name)})
 
 		if err := r.Status().Update(ctx, gateway); err != nil {
-			log.Error(err, "Failed to update Gateway status")
-			return ctrl.Result{}, err
+			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+				log.Info("Conflict when updating Gateway listener status, retrying")
+				return ctrl.Result{Requeue: true}, nil
+			} else {
+				log.Error(err, "Failed to update Gateway listener status")
+				return ctrl.Result{}, err
+			}
 		}
 		return ctrl.Result{}, nil
 	}
@@ -311,8 +316,13 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Message: fmt.Sprintf("Validated and accepted gateway (%s)", gateway.Name)})
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
-		log.Error(err, "Failed to update Gateway status")
-		return ctrl.Result{}, err
+		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+			log.Info("Conflict when updating Gateway listener status, retrying")
+			return ctrl.Result{Requeue: true}, nil
+		} else {
+			log.Error(err, "Failed to update Gateway listener status")
+			return ctrl.Result{}, err
+		}
 	}
 
 	tunnels, err := api.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
@@ -415,8 +425,13 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Message: fmt.Sprintf("Tunnel and deployment for gateway (%s) reconciled successfully", gateway.Name)})
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
-		log.Error(err, "Failed to update Gateway status")
-		return ctrl.Result{}, err
+		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+			log.Info("Conflict when updating Gateway listener status, retrying")
+			return ctrl.Result{Requeue: true}, nil
+		} else {
+			log.Error(err, "Failed to update Gateway status")
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil
