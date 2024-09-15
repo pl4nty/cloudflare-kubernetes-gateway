@@ -36,7 +36,7 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			// projectimage stores the name of the image used in the example
-			var projectimage = "example.com/cloudflare-kubernetes-gateway:" + version
+			var projectimage = "ghcr.io/pl4nty/cloudflare-kubernetes-gateway:" + version
 
 			By("building the manager(Operator) image")
 			cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage))

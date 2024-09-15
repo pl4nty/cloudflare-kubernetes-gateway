@@ -3,13 +3,13 @@
 {
 	"name": "cloudflare-kubernetes-gateway",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/base:debian",
+	"image": "mcr.microsoft.com/devcontainers/go:1.23",
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
 		"ghcr.io/audacioustux/devcontainers/kubebuilder:1": {},
 		"ghcr.io/devcontainers-contrib/features/act:1": {},
-		"ghcr.io/devcontainers/features/go:1": {}
+		"ghcr.io/mpriscella/features/kind:1": {}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.

@@ -26,7 +26,8 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o ma
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/manager /ko-app/cmd
 USER 65532:65532
 
-ENTRYPOINT ["/manager"]
+# can't use default /manager: https://github.com/ko-build/ko/issues/944
+ENTRYPOINT ["/ko-app/cmd"]
