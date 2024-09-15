@@ -43,7 +43,7 @@ var _ = Describe("Gateway controller", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			By("Setting the Image ENV VAR which stores the Operand image")
-			// renovate: datasource=docker
+			// renovate: datasource=docker depName=cloudflared/cloudflared
 			err = os.Setenv("GATEWAY_IMAGE", "cloudflare/cloudflared:2024.5.0")
 			Expect(err).To(Not(HaveOccurred()))
 

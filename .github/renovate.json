@@ -14,7 +14,7 @@
         "^internal/controller/gateway_controller_test\\.go$"
       ],
       "matchStrings": [
-        "\\n\\t+ renovate: datasource=(?<datasource>[a-z-]+)\\n\\t+Image: \"(?<depName>[^$:\" ]+):(?<currentValue>[^$:\" ]+)\",\\n"
+        "datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)( repository=(?<registryUrl>\\S+))?\\n.+: (&\\S+\\s)?(?<currentValue>\\S+)"
       ]
     }
   ]
