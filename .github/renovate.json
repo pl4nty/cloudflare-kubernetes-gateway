@@ -10,7 +10,8 @@
     {
       "customType": "regex",
       "fileMatch": [
-        "^internal/controller/gateway_controller\\.go$"
+        "^config/manager\\.yaml$",
+        "^internal/controller/gateway_controller_test\\.go$"
       ],
       "matchStrings": [
         "\\n\\t+ renovate: datasource=(?<datasource>[a-z-]+)\\n\\t+Image: \"(?<depName>[^$:\" ]+):(?<currentValue>[^$:\" ]+)\",\\n"
