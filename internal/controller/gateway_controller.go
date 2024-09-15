@@ -12,6 +12,7 @@ import (
 	"github.com/cloudflare/cloudflare-go/v2/zero_trust"
 
 	appsv1 "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -189,9 +190,120 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
+	// Validate Gateway listeners and update status
+	listenerStatuses := []gatewayv1.ListenerStatus{}
+	validListener := false
+	for _, listener := range gateway.Spec.Listeners {
+		listenerStatus := gatewayv1.ListenerStatus{
+			Name:           listener.Name,
+			AttachedRoutes: 0,
+			SupportedKinds: []gatewayv1.RouteGroupKind{},
+		}
+
+		if (listener.Protocol == gatewayv1.HTTPProtocolType && listener.Port == gatewayv1.PortNumber(80)) || (listener.Protocol == gatewayv1.HTTPSProtocolType && listener.Port == gatewayv1.PortNumber(443)) {
+			validListener = true
+			if listener.TLS != nil && listener.TLS.CertificateRefs != nil {
+				ref := listener.TLS.CertificateRefs[0]
+				secretRef := types.NamespacedName{
+					Name: string(ref.Name),
+				}
+				if ref.Namespace != nil {
+					secretRef.Namespace = string(*ref.Namespace)
+				}
+				secret := &core.Secret{}
+
+				if err := r.Get(ctx, secretRef, secret); err != nil {
+					log.Error(err, "unable to fetch Secret from listener CertificateRefs", "listener", listener.Name)
+
+					meta.SetStatusCondition(&listenerStatus.Conditions, metav1.Condition{
+						Type:               string(gatewayv1.ListenerConditionResolvedRefs),
+						Status:             metav1.ConditionFalse,
+						Reason:             string(gatewayv1.ListenerReasonInvalidCertificateRef),
+						ObservedGeneration: gateway.Generation,
+						Message:            "Listener TLS certificate references are not supported",
+					})
+				} else {
+					meta.SetStatusCondition(&listenerStatus.Conditions, metav1.Condition{
+						Type:               string(gatewayv1.ListenerConditionResolvedRefs),
+						Status:             metav1.ConditionFalse,
+						Reason:             string(gatewayv1.ListenerReasonRefNotPermitted),
+						ObservedGeneration: gateway.Generation,
+						Message:            "Listener TLS certificate references are not supported",
+					})
+				}
+			} else {
+				meta.SetStatusCondition(&listenerStatus.Conditions, metav1.Condition{
+					Type:               string(gatewayv1.ListenerConditionAccepted),
+					Status:             metav1.ConditionTrue,
+					Reason:             string(gatewayv1.ListenerReasonAccepted),
+					ObservedGeneration: gateway.Generation,
+					Message:            fmt.Sprintf("Listener protocol %s and port %d accepted", listener.Protocol, listener.Port),
+				})
+			}
+		} else if listener.Protocol != gatewayv1.HTTPProtocolType && listener.Protocol != gatewayv1.HTTPSProtocolType {
+			meta.SetStatusCondition(&listenerStatus.Conditions, metav1.Condition{
+				Type:               string(gatewayv1.ListenerConditionAccepted),
+				Status:             metav1.ConditionFalse,
+				Reason:             string(gatewayv1.ListenerReasonUnsupportedProtocol),
+				ObservedGeneration: gateway.Generation,
+				Message:            fmt.Sprintf("Listener protocol %s is not supported. Only HTTP or HTTPS is supported", listener.Protocol),
+			})
+		} else if listener.Port != gatewayv1.PortNumber(80) && listener.Port != gatewayv1.PortNumber(443) {
+			meta.SetStatusCondition(&listenerStatus.Conditions, metav1.Condition{
+				Type:               string(gatewayv1.ListenerConditionAccepted),
+				Status:             metav1.ConditionFalse,
+				Reason:             string(gatewayv1.ListenerReasonPortUnavailable),
+				ObservedGeneration: gateway.Generation,
+				Message:            fmt.Sprintf("Listener port %d is not supported. Only port 80 or 443 is supported", listener.Port),
+			})
+		} else {
+			meta.SetStatusCondition(&listenerStatus.Conditions, metav1.Condition{
+				Type:               string(gatewayv1.ListenerConditionAccepted),
+				Status:             metav1.ConditionFalse,
+				Reason:             string(gatewayv1.ListenerReasonInvalid),
+				ObservedGeneration: gateway.Generation,
+				Message:            "Invalid protocol/port combination. Listener only supports HTTP on port 80 or HTTPS on port 443",
+			})
+		}
+
+		// search AllowedRoutes for HTTPRoute and default to HTTPRoute if empty
+		validKind := false
+		for _, kind := range listener.AllowedRoutes.Kinds {
+			if kind.Kind == gatewayv1.Kind("HTTPRoute") {
+				validKind = true
+			} else {
+				meta.SetStatusCondition(&listenerStatus.Conditions, metav1.Condition{
+					Type:               string(gatewayv1.ListenerConditionResolvedRefs),
+					Status:             metav1.ConditionFalse,
+					Reason:             string(gatewayv1.ListenerReasonInvalidRouteKinds),
+					ObservedGeneration: gateway.Generation,
+					Message:            fmt.Sprintf("Listener only supports HTTPRoute, not %s", kind.Kind),
+				})
+			}
+		}
+		if validKind || len(listener.AllowedRoutes.Kinds) == 0 {
+			listenerStatus.SupportedKinds = []gatewayv1.RouteGroupKind{{Kind: gatewayv1.Kind("HTTPRoute")}}
+		}
+
+		listenerStatuses = append(listenerStatuses, listenerStatus)
+	}
+
 	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
 		log.Error(err, "Failed to re-fetch gateway")
 		return ctrl.Result{}, err
+	}
+	gateway.Status.Listeners = listenerStatuses
+
+	if !validListener {
+		meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+			Status: metav1.ConditionFalse, Reason: string(gatewayv1.GatewayReasonListenersNotValid), ObservedGeneration: gateway.Generation,
+			Message: fmt.Sprintf("No valid listeners for gateway (%s)", gateway.Name)})
+
+		if err := r.Status().Update(ctx, gateway); err != nil {
+			log.Error(err, "Failed to update Gateway status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
 	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
@@ -239,7 +351,6 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// 	return ctrl.Result{}, err
 		// }
 		// }
-		log.Info("Tunnel exists")
 		tunnelID = tunnels.Result[0].ID
 	}
 
@@ -292,7 +403,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
 	}
-	
+
 	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
 		log.Error(err, "Failed to re-fetch gateway")
 		return ctrl.Result{}, err

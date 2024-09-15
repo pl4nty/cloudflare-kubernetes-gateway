@@ -169,6 +169,28 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Service: cloudflare.String("http_status:404"),
 		})
 
+		// increment AttachedRoutes in each gateway listener status
+		gatewayObj := &gatewayv1.Gateway{}
+		gatewayRef := types.NamespacedName{
+			Namespace: gateway.Namespace,
+			Name:      gateway.Name,
+		}
+		if err := r.Get(ctx, gatewayRef, gatewayObj); err != nil {
+			log.Error(err, "Failed to re-fetch gateway")
+			return ctrl.Result{}, err
+		}
+		listeners := []gatewayv1.ListenerStatus{}
+		for _, listener := range gatewayObj.Status.Listeners {
+			listener.AttachedRoutes = int32(len(ingress))
+			listeners = append(listeners, listener)
+		}
+		log.Info("Updating Gateway listeners", "AttachedRoutes", len(ingress))
+		gatewayObj.Status.Listeners = listeners
+		if err := r.Status().Update(ctx, gatewayObj); err != nil {
+			log.Error(err, "Failed to update Gateway status")
+			return ctrl.Result{}, err
+		}
+
 		account, api, err := InitCloudflareApi(ctx, r.Client, string(gateway.Spec.GatewayClassName))
 		if err != nil {
 			log.Error(err, "Failed to initialize Cloudflare API")
