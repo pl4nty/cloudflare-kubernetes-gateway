@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/cloudflare/cloudflare-go/v2"
@@ -23,6 +24,10 @@ func InitCloudflareApi(ctx context.Context, c client.Client, gatewayClassName st
 	}
 	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {
 		return "", nil, nil
+	}
+
+	if gatewayClass.Spec.ParametersRef == nil {
+		return "", nil, errors.New("GatewayClass is missing a Secret ParameterRef")
 	}
 
 	secretRef := types.NamespacedName{
