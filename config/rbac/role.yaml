@@ -31,26 +31,6 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - gatewayclasses
-  verbs:
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - gatewayclasses/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - gatewayclasses/status
-  verbs:
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
   - gateways
   verbs:
   - get
@@ -60,12 +40,9 @@ rules:
 - apiGroups:
   - gateway.networking.k8s.io
   resources:
+  - gatewayclasses/finalizers
+  - gatewayclasses/status
   - gateways/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
   - gateways/status
   verbs:
   - update
