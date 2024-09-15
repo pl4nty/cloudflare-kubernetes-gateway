@@ -189,9 +189,19 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
+	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
+		log.Error(err, "Failed to re-fetch gateway")
+		return ctrl.Result{}, err
+	}
+
 	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
 		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonAccepted), ObservedGeneration: gateway.Generation,
-		Message: fmt.Sprintf("Tunnel and deployment for gateway (%s) created successfully", gateway.Name)})
+		Message: fmt.Sprintf("Validated and accepted gateway (%s)", gateway.Name)})
+
+	if err := r.Status().Update(ctx, gateway); err != nil {
+		log.Error(err, "Failed to update Gateway status")
+		return ctrl.Result{}, err
+	}
 
 	tunnels, err := api.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
 		AccountID: cloudflare.String(account),
@@ -282,11 +292,16 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
 	}
+	
+	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
+		log.Error(err, "Failed to re-fetch gateway")
+		return ctrl.Result{}, err
+	}
 
 	// The following implementation will update the status
 	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionProgrammed),
 		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
-		Message: fmt.Sprintf("Tunnel and deployment for gateway (%s) created successfully", gateway.Name)})
+		Message: fmt.Sprintf("Tunnel and deployment for gateway (%s) reconciled successfully", gateway.Name)})
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
 		log.Error(err, "Failed to update Gateway status")
