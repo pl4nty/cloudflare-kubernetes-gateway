@@ -6,16 +6,18 @@
   "postUpdateOptions": [
     "gomodTidy"
   ],
-  "customManagers": [
+  "regexManagers": [
     {
-      "customType": "regex",
+      "description": "Process custom dependencies",
       "fileMatch": [
-        "^config/manager\\.yaml$",
-        "^internal/controller/gateway_controller_test\\.go$"
+        "\\.ya?ml$",
+        "\\.go$"
       ],
       "matchStrings": [
-        "datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)( repository=(?<registryUrl>\\S+))?\\n.+: (&\\S+\\s)?(?<currentValue>\\S+)"
-      ]
+        "datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)( versioning=(?<versioning>\\S+))?\n.*?\"(?<currentValue>.*)\"\n"
+      ],
+      "datasourceTemplate": "{{#if datasource}}{{{datasource}}}{{else}}github-releases{{/if}}",
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     }
   ]
 }
