@@ -49,6 +49,12 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
+	// check if GatewayClass controllerName is ours
+	if gatewayClass.Spec.ControllerName != controllerName {
+		log.Info("Ignoring gatewayclass with non-matching controllerName")
+		return ctrl.Result{}, nil
+	}
+
 	// validate parameters
 	var ok bool
 	_, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
