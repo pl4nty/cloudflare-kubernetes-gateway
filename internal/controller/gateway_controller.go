@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudflare/cloudflare-go/v2"
-	"github.com/cloudflare/cloudflare-go/v2/shared"
-	"github.com/cloudflare/cloudflare-go/v2/zero_trust"
+	"github.com/cloudflare/cloudflare-go/v3"
+	"github.com/cloudflare/cloudflare-go/v3/shared"
+	"github.com/cloudflare/cloudflare-go/v3/zero_trust"
 
 	appsv1 "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
