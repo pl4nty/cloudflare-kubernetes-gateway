@@ -1,11 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "packages": {
-    ".": {
-      "extra-files": [
-        "README.md",
-        "config/manager/kustomization.yaml"
-      ]
-    }
-  }
+    ".": {}
+  },
+  "extra-files": [
+    "README.md",
+    "config/manager/kustomization.yaml"
+  ]
 }
