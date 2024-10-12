@@ -3,6 +3,7 @@
   "packages": {
     ".": {}
   },
+  "release-type": "go",
   "extra-files": [
     "README.md",
     "config/manager/kustomization.yaml"
