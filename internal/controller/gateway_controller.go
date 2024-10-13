@@ -632,13 +632,15 @@ func (r *GatewayReconciler) deploymentForGateway(
 // labelsForGateway returns the labels for selecting the resources
 // More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 func labelsForGateway(name string) map[string]string {
-	var imageTag string
-	image, err := imageForGateway()
-	if err == nil {
-		imageTag = strings.Split(image, ":")[1]
-	}
-	return map[string]string{"app.kubernetes.io/name": "cloudflare-kubernetes-gateway",
-		"app.kubernetes.io/version":    imageTag,
+	// skip imageTag, to allow version updates to existing deployments
+	// var imageTag string
+	// image, err := imageForGateway()
+	// if err == nil {
+	// 	imageTag = strings.Split(image, ":")[1]
+	// }
+	return map[string]string{
+		"app.kubernetes.io/name": "cloudflare-kubernetes-gateway",
+		// "app.kubernetes.io/version":    imageTag,
 		"app.kubernetes.io/managed-by": "GatewayController",
 		"cfargotunnel.com/name":        name,
 	}
