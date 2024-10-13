@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.7.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.6.0...v0.7.0) (2024-10-13)
+
+
+### Features
+
+* enable controller and cloudflared metrics ([1f9792f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/1f9792f132c67bbcabb448631ab17adefb2a2578))
+* update cloudflare/cloudflared docker tag to v2024.10.0 ([ef474e2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/ef474e2d71372558ac0c709c1fee85d019a507af))
+* validate gateway listeners ([e063f99](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/e063f993d5c3d4d9b49ec6be831eb5a72928b3ae))
+
+
+### Bug Fixes
+
+* `parentRefs` in README example ([#146](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/146)) ([783c5a8](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/783c5a8817667b63fb869f14dd1f7b021e105154))
+* always upload conformance report in CI ([ba3a043](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/ba3a043c8e4b662bebd22a7ceb3b2834e21e0418))
+* consolidate RBAC rules ([84b0eab](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/84b0eab1efb71eaebb28325f710fd7b919887300))
+* **deps:** update kubernetes packages to v0.31.1 ([#149](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/149)) ([ce2d055](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/ce2d05570dbdc2fde79355dfd17a80d255a49b34))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.20.2 ([#142](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/142)) ([9783e98](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/9783e985109d2c913abd89cb3c293c4cd35391a3))
+* **deps:** update module github.com/onsi/gomega to v1.34.2 ([#143](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/143)) ([95badce](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/95badce7213926807649c4ba94be8d9cbb2e348e))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.19.0 ([#137](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/137)) ([4f313e5](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/4f313e560f9e418fccb713c2c736fce6c314a284))
+* dynamic e2e test timeout for slower local testing ([fb68395](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/fb68395b2cf781cee002972ad24817cca83c8df2))
+* expose Cloudflare token errors in GatewayClass condition ([4f07230](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/4f072308012449314fdeb83470ab32a8a3dbe0ae))
+* fetch tags before goreleaser ([15f326e](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/15f326ea1010a9fffb5871707253a37fbad874df))
+* force release-please to use manifest ([909d25b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/909d25bb537aef7a359fc70247ddd6765926da93))
+* gateway status conditions ([8f76fbd](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/8f76fbd131eb00be4dbea0627ddbed208baf7148))
+* Handle other gatewayclasses gracefully ([#156](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/156)) ([6880900](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/68809004bdb96efa9f12b364b1dbcd1c6eeaee02))
+* ignore e2e CI errors ([a283f4b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/a283f4b43aafae95d52582b23adee4ae87e0f654))
+* only reconcile if generation changes ([#163](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/163)) ([3eec298](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/3eec29823f866c9e1e63fbfb2d3c7c3e2526b5ef))
+* README token steps, e2e image name/entrypoint, devcontainer base ([ca81643](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/ca816432aa0197806256b2cbfe43e0f8a146a565))
+* refactor release-please config ([c3f189c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/c3f189cd2b0da4686ed0f678cb95b937743975ab))
+* remove version from deployment labels ([99ca07e](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/99ca07eda1737e80476ed1bce776ec0913a0ff44))
+* Renovate config for cloudflared ([a22d58a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/a22d58aa8549d1074005d303d9c3971512b9a186))
+* respect Cloudflare API ratelimit ([f6b41fd](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f6b41fd3c3114630f61d826233a5df368caf37c2))
+* ServiceMonitors namespace and name prefix ([742aed9](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/742aed9ac2b2c0fe2912a4d27479c7cf34a332c3))
+* suppress gateway update conflict errors ([94efb3d](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/94efb3d2844e6ad3d6e7ba5107b5373310237368))
+* update existing cloudflared deployments ([020e1ac](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/020e1ac3362d758dcb8a536a3bcb347ce3d242ab))
+* use recommended Renovate config ([e929d16](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/e929d163e1df9ec706b43f4ba8804861d9a43dd7))
+* validate presence of GatewayClass secret parameter ([712f871](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/712f871e45ac39609b7ef15f3d3436fd9f2380ae))
+
 ## [0.6.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.5.0...v0.6.0) (2024-08-12)
 
 
