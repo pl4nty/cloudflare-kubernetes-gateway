@@ -1,2 +1,3 @@
 resources:
 - monitor.yaml
+- image_monitor.yaml
