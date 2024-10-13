@@ -50,7 +50,7 @@ type GatewayReconciler struct {
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;update;watch
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/finalizers,verbs=update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=update
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;watch
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
 
@@ -412,6 +412,34 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		log.Error(err, "Failed to get Deployment")
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
+	} else {
+		// Define a new deployment
+		dep, err := r.deploymentForGateway(gateway, token)
+		if err != nil {
+			log.Error(err, "Failed to define new Deployment resource for Gateway")
+
+			// The following implementation will update the status
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+				Message: fmt.Sprintf("Failed to update Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+
+			if err := r.Status().Update(ctx, gateway); err != nil {
+				log.Error(err, "Failed to update Gateway status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
+		}
+
+		if err := r.Update(ctx, dep); err != nil {
+			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+				log.Info("Conflict when updating Deployment, retrying")
+				return ctrl.Result{Requeue: true}, nil
+			} else {
+				log.Error(err, "Failed to update Deployment")
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
