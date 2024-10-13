@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -56,22 +57,28 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// validate parameters
-	var ok bool
+	msg := ""
 	_, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
 	if err == nil {
 		token, err := api.User.Tokens.Verify(ctx)
 		if err == nil {
-			ok = token.Status == "active"
+			if token.Status != "active" {
+				msg = fmt.Sprintf("Token status is %s, is not active. Please check the Cloudflare dashboard", token.Status)
+			}
+		} else {
+			msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are valid"
 		}
+	} else {
+		msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are set"
 	}
 
 	var condition metav1.Condition
-	if !ok {
+	if msg != "" {
 		condition = metav1.Condition{
 			Type:               string(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:             metav1.ConditionFalse,
 			Reason:             string(gatewayv1.GatewayClassReasonInvalidParameters),
-			Message:            "Unable to initialize Cloudflare API from secret in GatewayClass parameterRef. Ensure ACCOUNT_ID and TOKEN are set",
+			Message:            "Unable to initialize Cloudflare API. " + msg,
 			ObservedGeneration: gatewayClass.Generation,
 		}
 	} else {
