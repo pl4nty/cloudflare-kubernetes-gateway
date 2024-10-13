@@ -34,6 +34,7 @@ jobs:
     permissions:
       contents: read
       checks: write
+      packages: write
     steps:
       - uses: actions/checkout@v4.2.1
       - uses: actions/setup-go@v5.0.2
@@ -58,6 +59,13 @@ jobs:
         with:
           name: conformance-report
           path: '*-report.yaml'
+
+      - uses: docker/login-action@v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - run: make docker-push
 
   release-please:
     if: github.ref == 'refs/heads/main'
