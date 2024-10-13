@@ -1,3 +1,5 @@
+namespace: cloudflare-gateway
+namePrefix: cloudflare-
 resources:
 - monitor.yaml
 - image_monitor.yaml
