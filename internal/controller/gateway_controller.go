@@ -599,6 +599,12 @@ func (r *GatewayReconciler) deploymentForGateway(
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
+						Sysctls: []corev1.Sysctl{
+							{
+								Name:  "net.ipv4.ping_group_range",
+								Value: "0 0",
+							},
+						},
 					},
 					Containers: []corev1.Container{{
 						Image:           image,
