@@ -1,0 +1,18 @@
+# Prometheus Monitor Service (Metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    control-plane: image
+    app.kubernetes.io/name: cloudflare-kubernetes-gateway
+    app.kubernetes.io/managed-by: kustomize
+  name: image-metrics-monitor
+  namespace: system
+spec:
+  endpoints:
+    - path: /metrics
+      port: http # Ensure this is the name of the port that exposes HTTP metrics
+      scheme: http
+  selector:
+    matchLabels:
+      control-plane: image
