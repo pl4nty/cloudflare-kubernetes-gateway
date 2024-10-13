@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -332,9 +333,9 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "429 Too Many Requests") {
-			log.Error(err, "Rate limited, requeueing after 10 minutes")
+			log.Error(err, "Rate limited, requeueing after 5 minutes")
 			return ctrl.Result{
-				RequeueAfter: time.Minute * 10, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
+				RequeueAfter: time.Minute * 5, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
 			}, nil
 		} else {
 			return ctrl.Result{}, err
@@ -667,8 +668,10 @@ func imageForGateway() (string, error) {
 // Note that the Deployment will be also watched in order to ensure its
 // desirable state on the cluster
 func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.Gateway{}).
 		Owns(&appsv1.Deployment{}).
+		WithEventFilter(pred).
 		Complete(r)
 }

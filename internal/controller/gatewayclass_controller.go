@@ -12,6 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -101,11 +102,13 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GatewayClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.GatewayClass{
 			Spec: gatewayv1.GatewayClassSpec{
 				ControllerName: "github.com/pl4nty/cloudflare-kubernetes-gateway",
 			},
 		}).
+		WithEventFilter(pred).
 		Complete(r)
 }
