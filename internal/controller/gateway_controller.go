@@ -332,9 +332,9 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "429 Too Many Requests") {
-			log.Error(err, "Rate limited, requeueing after 5 minutes")
+			log.Error(err, "Rate limited, requeueing after 10 minutes")
 			return ctrl.Result{
-				RequeueAfter: time.Minute * 5, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
+				RequeueAfter: time.Minute * 10, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
 			}, nil
 		} else {
 			return ctrl.Result{}, err
