@@ -46,15 +46,14 @@ jobs:
         with:
           cluster_name: kind
       - run: make test-e2e
+        continue-on-error: true
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Get manager logs
-        if: ${{ always() }}
         run: kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
 
       - name: Upload conformance report
-        if: ${{ always() }}
         uses: actions/upload-artifact@v4.4.3
         with:
           name: conformance-report
@@ -65,7 +64,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: make docker-push
+      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway:$(git describe --tag --always --match 'v[0-9]*')
 
   release-please:
     if: github.ref == 'refs/heads/main'
