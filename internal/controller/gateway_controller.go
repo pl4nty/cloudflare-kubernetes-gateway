@@ -331,8 +331,14 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Name:      cloudflare.String(gateway.Name),
 	})
 	if err != nil {
-		log.Error(err, "Failed to get Tunnel from Cloudflare API")
-		return ctrl.Result{}, err
+		if strings.Contains(err.Error(), "429 Too Many Requests") {
+			log.Error(err, "Rate limited, requeueing after 5 minutes")
+			return ctrl.Result{
+				RequeueAfter: time.Minute * 5, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
+			}, nil
+		} else {
+			return ctrl.Result{}, err
+		}
 	}
 
 	tunnelID := ""
