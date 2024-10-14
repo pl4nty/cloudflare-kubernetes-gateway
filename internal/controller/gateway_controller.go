@@ -23,7 +23,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -54,6 +53,7 @@ type GatewayReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -371,6 +371,63 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		tunnelID = tunnels.Result[0].ID
 	}
 
+	// Check for parametersRef in gateway specs
+	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
+		parametersRef := gateway.Spec.Infrastructure.ParametersRef
+		if parametersRef.Kind == "ConfigMap" {
+			configMap := &corev1.ConfigMap{}
+			err := r.Get(ctx, types.NamespacedName{Name: parametersRef.Name, Namespace: gateway.Namespace}, configMap)
+			if err != nil {
+				log.Error(err, "Failed to get ConfigMap referenced in parametersRef")
+				return ctrl.Result{}, err
+			}
+
+			// Check the disableDeployment key
+			if disableDeployment, ok := configMap.Data["disableDeployment"]; ok && disableDeployment == "true" {
+				log.Info("Deployment creation and update steps are disabled for this Gateway")
+				if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
+					log.Error(err, "Failed to re-fetch gateway")
+					return ctrl.Result{}, err
+				}
+
+				// Check if there's an existing deployment and delete it if so
+				found := &appsv1.Deployment{}
+				err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+				if err == nil {
+					log.Info("Deleting existing Deployment", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+					if err = r.Delete(ctx, found); err != nil {
+						log.Error(err, "Failed to delete existing Deployment", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+						return ctrl.Result{}, err
+					}
+				} else if !apierrors.IsNotFound(err) {
+					log.Error(err, "Failed to get existing Deployment", "Deployment.Namespace", gateway.Namespace, "Deployment.Name", gateway.Name)
+					return ctrl.Result{}, err
+				}
+
+				// The following implementation will update the status
+				meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionProgrammed),
+					Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
+					Message: fmt.Sprintf("Tunnel and deployment for gateway (%s) reconciled successfully", gateway.Name)})
+
+				if err := r.Status().Update(ctx, gateway); err != nil {
+					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+						log.Info("Conflict when updating Gateway listener status, retrying")
+						return ctrl.Result{Requeue: true}, nil
+					} else {
+						log.Error(err, "Failed to update Gateway status")
+						return ctrl.Result{}, err
+					}
+				}
+				
+				return ctrl.Result{}, nil
+			} else {
+				log.Info("disableDeployment key is missing in ConfigMap")
+			}
+		} else {
+			log.Info("parametersRef kind isn't configmap")
+		}
+	}
+
 	res, err := api.ZeroTrust.Tunnels.Token.Get(ctx, tunnelID, zero_trust.TunnelTokenGetParams{
 		AccountID: cloudflare.String(account),
 	})
@@ -478,7 +535,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	// created and managed in the reconciliation. These ones, such as the Deployment created on this reconcile,
 	// are defined as dependent of the custom resource. See that we use the method ctrl.SetControllerReference.
 	// to set the ownerRef which means that the Deployment will be deleted by the Kubernetes API.
-	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
 
 	log := log.FromContext(ctx)
 
