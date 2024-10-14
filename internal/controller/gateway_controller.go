@@ -536,7 +536,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	// created and managed in the reconciliation. These ones, such as the Deployment created on this reconcile,
 	// are defined as dependent of the custom resource. See that we use the method ctrl.SetControllerReference.
 	// to set the ownerRef which means that the Deployment will be deleted by the Kubernetes API.
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
 
 	log := log.FromContext(ctx)
 
