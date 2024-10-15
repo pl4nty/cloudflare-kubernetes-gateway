@@ -12,4 +12,4 @@ kos:
       - all
     main: ./cmd
     # default chainguard image only supports amd64/arm64
-    base_image: gcr.io/distroless/static-debian12:nonroot
+    base_image: gcr.io/distroless/static:nonroot
