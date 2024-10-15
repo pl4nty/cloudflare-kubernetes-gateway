@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.7.0...v0.7.1) (2024-10-15)
+
+
+### Bug Fixes
+
+* Allow cloudflared ICMP proxy feature ([#165](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/165)) ([131d363](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/131d3637f74317974b35c3956e621140eb27fda0))
+* release created condition in CI ([eb7eb6a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/eb7eb6a50ec66897d2c918c83725e1f76c16f3e0))
+* release created condition in CI ([d754ad3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/d754ad3fd220fd2bf8e217e89ad2b04060d2e02e))
+* support for exotic platforms in base image ([1de2742](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/1de2742305fc9c0247894631db4f06d3dffcbb16))
+
 ## [0.7.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.6.0...v0.7.0) (2024-10-13)
 
 
