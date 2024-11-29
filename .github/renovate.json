@@ -18,6 +18,15 @@
       ],
       "datasourceTemplate": "{{#if datasource}}{{{datasource}}}{{else}}github-releases{{/if}}",
       "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
+    {
+      "fileMatch": [
+        "Makefile"
+      ],
+      "matchStrings": [
+        "https:\/\/github.com\/(?<depName>.*)\/releases\/download\/(?<currentValue>.*)\/.*.yaml"
+      ],
+      "datasourceTemplate": "github-release-attachments"
     }
   ]
 }
