@@ -16,3 +16,5 @@ spec:
   selector:
     matchLabels:
       control-plane: image
+  namespaceSelector:
+    any: true
