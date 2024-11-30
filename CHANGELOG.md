@@ -5,6 +5,7 @@
 
 ### Bug Fixes
 
+* **deps:** update cloudflare/cloudflared docker tag to v2024.11.1 ([#179](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/179)) ([e97a123](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/e97a123d0835b01012dee11d90d366217b446391))
 * **deps:** update kubernetes packages to v0.31.3 ([#183](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/183)) ([ad156a0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/ad156a0a0392155c0a329400a55a367d7111443e))
 * **deps:** update module github.com/onsi/ginkgo/v2 to v2.22.0 ([#182](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/182)) ([5e01641](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5e016411190090fdbc636a495112796163484c38))
 * **deps:** update module github.com/onsi/gomega to v1.36.0 ([#186](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/186)) ([88a289c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/88a289c6447feb6dba2f410e609ff5398578c034))
