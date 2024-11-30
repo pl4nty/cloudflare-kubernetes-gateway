@@ -24,7 +24,7 @@
         "Makefile"
       ],
       "matchStrings": [
-        "https:\/\/github.com\/(?<depName>.*)\/releases\/download\/(?<currentValue>.*)\/.*.yaml"
+        "https:\/\/github.com\/(?<depName>.*)\/releases\/download\/(?<currentValue>.*)\/[^\\s]+"
       ],
       "datasourceTemplate": "github-release-attachments"
     }
