@@ -23,7 +23,7 @@ jobs:
       checks: write
     steps:
       - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-go@v5.1.0
+      - uses: actions/setup-go@v5.2.0
         with:
           go-version: stable
 
@@ -37,7 +37,7 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-go@v5.1.0
+      - uses: actions/setup-go@v5.2.0
         with:
           go-version: stable
 
@@ -97,7 +97,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - uses: actions/setup-go@v5.1.0
+      - uses: actions/setup-go@v5.2.0
         with:
           go-version: stable
       - uses: goreleaser/goreleaser-action@v6.1.0
