@@ -42,7 +42,7 @@ jobs:
           go-version: stable
 
       - name: Create kind cluster
-        uses: helm/kind-action@v1.10.0
+        uses: helm/kind-action@v1.11.0
         with:
           cluster_name: kind
       - run: make test-e2e
