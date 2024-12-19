@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.7.2...v0.7.3) (2024-12-19)
+
+
+### Bug Fixes
+
+* cloudflared ServiceMonitor match any namespace ([623a5e7](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/623a5e755a32f050fbcc4dec5046c3b7be1be05f))
+* **deps:** update module github.com/onsi/gomega to v1.36.1 ([#193](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/193)) ([150ec11](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/150ec11915eec436415875d43ee0df98149556da))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.19.3 ([#190](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/190)) ([f4dc86b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f4dc86b96f5c86e5d88b1eb9d293f30633d2d8d1))
+
 ## [0.7.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.7.1...v0.7.2) (2024-11-30)
 
 
