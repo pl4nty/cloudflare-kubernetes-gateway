@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.8.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.7.2...v0.8.0) (2025-01-04)
+
+
+### Features
+
+* add gateway infrastructure parameter to disable operator's deployment ([#166](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/166)) ([8388f71](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/8388f710f65e4f6383ab473da219260220a10521))
+* **deps:** update cloudflare/cloudflared docker tag to v2024.12.2 ([#195](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/195)) ([7561f32](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/7561f322e3bfa3290a8913a08a4f566abf3deb34))
+
+
+### Bug Fixes
+
+* cloudflared ServiceMonitor match any namespace ([623a5e7](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/623a5e755a32f050fbcc4dec5046c3b7be1be05f))
+* **deps:** update kubernetes packages to v0.32.0 ([#196](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/196)) ([f9738e6](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f9738e601d88142e3388f283e0450c1a658a3d14))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.22.1 ([#201](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/201)) ([22887c7](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/22887c7a2379533d364254008ea1576afc4f76ef))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.22.2 ([#205](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/205)) ([d9b852d](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/d9b852d52488a1f51e4f2c0c6db25036785f95a8))
+* **deps:** update module github.com/onsi/gomega to v1.36.1 ([#193](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/193)) ([150ec11](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/150ec11915eec436415875d43ee0df98149556da))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.19.3 ([#190](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/190)) ([f4dc86b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f4dc86b96f5c86e5d88b1eb9d293f30633d2d8d1))
+* RBAC to disable deployment ([45b40ad](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/45b40adda0182faa219ce9ff248eed08e23eebb0))
+* README split example yaml to avoid race condition, warn about orphaned hostnames ([50e9027](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/50e9027c22ebb3e46ad3827501b5ab940be4644d))
+
 ## [0.7.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.7.1...v0.7.2) (2024-11-30)
 
 
