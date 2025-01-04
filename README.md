@@ -88,7 +88,7 @@ By default, a [Cloudflare Tunnel client](https://github.com/cloudflare/cloudflar
 Additional clients can be deployed ([guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/deployment-guides/)) to customise parameters like replicas or tolerations, and traffic will be load-balanced between them and the built-in client.
 To disable the built-in Deployment and only use standalone clients:
 
-1. Create a ConfigMap: `kubectl create configmap -n cloudflare-gateway generic gateway --from-literal=disableDeployment=true`
+1. Create a ConfigMap: `kubectl create configmap -n cloudflare-gateway gateway --from-literal=disableDeployment=true`
 2. Reference it from the gateway:
 
 ```yaml
@@ -107,6 +107,5 @@ spec:
     parametersRef:
       group: ""
       kind: ConfigMap
-      namespace: cloudflare-gateway
       name: gateway
 ```

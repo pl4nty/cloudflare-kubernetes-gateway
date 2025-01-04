@@ -10,6 +10,7 @@ rules:
   - deployments
   verbs:
   - create
+  - delete
   - get
   - list
   - update
@@ -17,17 +18,18 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - events
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resources:
+  - configmaps
   - secrets
   verbs:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
 - apiGroups:
   - gateway.networking.k8s.io
   resources:

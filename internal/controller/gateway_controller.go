@@ -50,10 +50,10 @@ type GatewayReconciler struct {
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;update;watch
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/finalizers,verbs=update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=update
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch;delete
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
-// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -333,9 +333,9 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "429 Too Many Requests") {
-			log.Error(err, "Rate limited, requeueing after 5 minutes")
+			log.Error(err, "Rate limited, requeueing after 10 minutes")
 			return ctrl.Result{
-				RequeueAfter: time.Minute * 5, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
+				RequeueAfter: time.Minute * 10, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
 			}, nil
 		} else {
 			return ctrl.Result{}, err
