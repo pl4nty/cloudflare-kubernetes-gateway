@@ -120,8 +120,7 @@ var _ = Describe("Gateway controller", func() {
 
 			By("Checking the latest Status Condition added to the Gateway instance")
 			Eventually(func() error {
-				if gateway.Status.Conditions != nil &&
-					len(gateway.Status.Conditions) != 0 {
+				if len(gateway.Status.Conditions) != 0 {
 					latestStatusCondition := gateway.Status.Conditions[len(gateway.Status.Conditions)-1]
 					expectedLatestStatusCondition := metav1.Condition{
 						Type:   string(gatewayv1.GatewayConditionAccepted),
@@ -137,7 +136,7 @@ var _ = Describe("Gateway controller", func() {
 				}
 				return nil
 			}, time.Minute, time.Second).Should(Succeed())
-			
+
 			By("Creating a ConfigMap to disable deployment")
 			configMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -156,8 +155,8 @@ var _ = Describe("Gateway controller", func() {
 			Expect(err).To(Not(HaveOccurred()))
 			gateway.Spec.Infrastructure = &gatewayv1.GatewayInfrastructure{
 				ParametersRef: &gatewayv1.LocalParametersReference{
-					Kind:  "ConfigMap",
-					Name:  "gateway-config",
+					Kind: "ConfigMap",
+					Name: "gateway-config",
 				},
 			}
 			err = k8sClient.Update(ctx, gateway)

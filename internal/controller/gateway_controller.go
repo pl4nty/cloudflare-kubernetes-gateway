@@ -12,7 +12,6 @@ import (
 	"github.com/cloudflare/cloudflare-go/v2/zero_trust"
 
 	appsv1 "k8s.io/api/apps/v1"
-	core "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -212,7 +211,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				if ref.Namespace != nil {
 					secretRef.Namespace = string(*ref.Namespace)
 				}
-				secret := &core.Secret{}
+				secret := &corev1.Secret{}
 
 				if err := r.Get(ctx, secretRef, secret); err != nil {
 					log.Error(err, "unable to fetch Secret from listener CertificateRefs", "listener", listener.Name)
@@ -419,7 +418,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 						return ctrl.Result{}, err
 					}
 				}
-				
+
 				return ctrl.Result{}, nil
 			} else {
 				log.Info("disableDeployment key is missing in ConfigMap")
@@ -536,7 +535,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	// created and managed in the reconciliation. These ones, such as the Deployment created on this reconcile,
 	// are defined as dependent of the custom resource. See that we use the method ctrl.SetControllerReference.
 	// to set the ownerRef which means that the Deployment will be deleted by the Kubernetes API.
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
 
 	log := log.FromContext(ctx)
 
