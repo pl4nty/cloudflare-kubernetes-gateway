@@ -2,14 +2,15 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
 	//nolint:golint
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -154,7 +155,7 @@ var _ = Describe("Gateway controller", func() {
 			err = k8sClient.Get(ctx, typeNamespaceName, gateway)
 			Expect(err).To(Not(HaveOccurred()))
 			gateway.Spec.Infrastructure = &gatewayv1.GatewayInfrastructure{
-				ParametersRef: &gatewayv1.ParametersReference{
+				ParametersRef: &gatewayv1.LocalParametersReference{
 					Kind:  "ConfigMap",
 					Name:  "gateway-config",
 				},
@@ -196,7 +197,7 @@ var _ = Describe("Gateway controller", func() {
 			err = k8sClient.Get(ctx, typeNamespaceName, gateway)
 			Expect(err).To(Not(HaveOccurred()))
 			gateway.Spec.Infrastructure = &gatewayv1.GatewayInfrastructure{
-				ParametersRef: &gatewayv1.ParametersReference{
+				ParametersRef: &gatewayv1.LocalParametersReference{
 					Group: "core",
 					Kind:  "ConfigMap",
 					Name:  "gateway-config-missing-key",
