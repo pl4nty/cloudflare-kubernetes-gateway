@@ -25,7 +25,7 @@ spec:
     name: cloudflare
 ```
 
-7. [Create Gateways and HTTPRoutes](https://gateway-api.sigs.k8s.io/guides/http-routing/) to start managing traffic! For example:
+7. [Create a Gateway and HTTPRoute(s)](https://gateway-api.sigs.k8s.io/guides/http-routing/) to start managing traffic! For example:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -39,7 +39,9 @@ spec:
   - protocol: HTTP
     port: 80
     name: http
----
+```
+
+```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -67,6 +69,11 @@ The v1 Core spec is not yet supported, as some features (eg header-based routing
 * HTTPRoute Service backendRefs without filtering or weighting
 * Gateway gatewayClassName and listeners only
 * GatewayClass Core fields
+
+> [!WARNING]
+> Currently, DNS records are not deleted when route hostnames are modified or when routes are deleted.
+> Requests to orphaned hostnames respond with an HTTP 404 Not Found, rather than a DNS lookup failure.
+> For more details, see [#206](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/206).
 
 <!-- * HTTPRoute Gateway parentRefs, without sectionName
 * HTTPRoute hostnames, but not listener filtering or precedence
