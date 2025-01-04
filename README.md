@@ -81,3 +81,32 @@ The v1 Core spec is not yet supported, as some features (eg header-based routing
 * HTTPRoute backendRefs without filtering or weighting
 * Gateway gatewayClassName, listeners aren't validated
 * GatewayClass Core fields -->
+
+## Standalone cloudflared
+
+By default, a [Cloudflare Tunnel client](https://github.com/cloudflare/cloudflared) (cloudflared) runs for each Gateway, as a Deployment in the Gateway's namespace.
+Additional clients can be deployed ([guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/deployment-guides/)) to customise parameters like replicas or tolerations, and traffic will be load-balanced between them and the built-in client.
+To disable the built-in Deployment and only use standalone clients:
+
+1. Create a ConfigMap: `kubectl create configmap -n cloudflare-gateway generic gateway --from-literal=disableDeployment=true`
+2. Reference it from the gateway:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway
+  namespace: cloudflare-gateway
+spec:
+  gatewayClassName: cloudflare
+  listeners:
+  - protocol: HTTP
+    port: 80
+    name: http
+  infrastructure:
+    parametersRef:
+      group: ""
+      kind: ConfigMap
+      namespace: cloudflare-gateway
+      name: gateway
+```
