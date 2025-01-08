@@ -44,7 +44,7 @@ var _ = Describe("Gateway controller", func() {
 
 			By("Setting the Image ENV VAR which stores the Operand image")
 			// renovate: datasource=docker depName=cloudflare/cloudflared
-			err = os.Setenv("GATEWAY_IMAGE", "cloudflare/cloudflared:2024.12.2")
+			err = os.Setenv("GATEWAY_IMAGE", "cloudflare/cloudflared:2025.1.0")
 			Expect(err).To(Not(HaveOccurred()))
 
 			By("creating the custom resource for the Kind Gateway")
