@@ -5,6 +5,7 @@
 
 ### Bug Fixes
 
+* **deps:** update cloudflare/cloudflared docker tag to v2025 ([#209](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/209)) ([1e957a3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/1e957a3fbf9cbe5b4edb54d1336ab17ec03c0e89))
 * **deps:** update module sigs.k8s.io/controller-runtime to v0.19.4 ([#208](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/208)) ([d34e944](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/d34e9444814755b0b8da5a35a0c7adeadbf7f6f4))
 
 ## [0.8.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.7.2...v0.8.0) (2025-01-04)
