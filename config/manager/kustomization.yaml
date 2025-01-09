@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: ghcr.io/pl4nty/cloudflare-kubernetes-gateway
-  newTag: v0.8.0 # x-release-please-version
+  newTag: v0.8.1 # x-release-please-version
