@@ -9,7 +9,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4.2.2
-      - uses: securego/gosec@v2.21.4
+      - uses: securego/gosec@v2.22.0
         with:
           args: "-no-fail -fmt sarif -out results.sarif ./..."
       - uses: github/codeql-action/upload-sarif@v3.28.0
