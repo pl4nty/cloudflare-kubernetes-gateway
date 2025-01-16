@@ -2,7 +2,7 @@ module github.com/pl4nty/cloudflare-kubernetes-gateway
 
 go 1.23.0
 
-toolchain go1.23.4
+toolchain go1.23.5
 
 require (
 	github.com/cloudflare/cloudflare-go/v2 v2.4.0
