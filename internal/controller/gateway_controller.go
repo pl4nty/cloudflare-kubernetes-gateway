@@ -538,7 +538,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// The following implementation will update the status
 	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway,
-		Status: metav1.ConditionTrue, Reason: tring(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
+		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
 		Message: fmt.Sprintf("Deployment for custom resource (%s) reconciled successfully", gateway.Name)})
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
@@ -550,7 +550,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 // finalizeGateway will perform the required operations before delete the CR.
-func (r *GatewayReconciler) doFinalizerOperationsForGateway(cr *gatewayv1.Gateway, ctx context.Context, gatewayClass *gatewayv1.GatewayClass, account string, api *cloudflare.Client) {
+func (r *GatewayReconciler) doFinalizerOperationsForGateway(cr *gatewayv1.Gateway, ctx context.Context, gatewayClass *gatewayv1.GatewayClass, account string, api *cloudflare.Client) error {
 	// Note: It is not recommended to use finalizers with the purpose of deleting resources which are
 	// created and managed in the reconciliation. These ones, such as the Deployment created on this reconcile,
 	// are defined as dependent of the custom resource. See that we use the method ctrl.SetControllerReference.
@@ -562,7 +562,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(cr *gatewayv1.Gatewa
 	tunnel, err := api.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
 		AccountID: cloudflare.String(account),
 		IsDeleted: cloudflare.Bool(false),
-		Name:      cloudflare.String(gateway.Name),
+		Name:      cloudflare.String(cr.Name),
 	})
 	if err != nil {
 		log.Error(err, "Failed to get tunnel from Cloudflare API")
@@ -598,7 +598,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(cr *gatewayv1.Gatewa
 	}
 
 	// if GatewayClass has no other Gateways, remove its finalizer
-	gateways := &gatewayv1.GatewayList{Items: []gatewayv1.Gateway{{Spec: gatewayv1.GatewaySpec{GatewayClassName: gateway.Spec.GatewayClassName}}}}
+	gateways := &gatewayv1.GatewayList{Items: []gatewayv1.Gateway{{Spec: gatewayv1.GatewaySpec{GatewayClassName: cr.Spec.GatewayClassName}}}}
 	if err := r.List(ctx, gateways); err != nil {
 		log.Error(err, "Failed to list Gateways")
 		return err
