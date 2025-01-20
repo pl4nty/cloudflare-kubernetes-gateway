@@ -74,6 +74,7 @@ type GatewayReconciler struct {
 // - About Operator Pattern: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
 // - About Controllers: https://kubernetes.io/docs/concepts/architecture/controller/
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.4/pkg/reconcile
+// nolint:gocyclo
 func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
@@ -161,6 +162,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	account, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
+	if err != nil {
+		log.Error(err, "Failed to load Cloudflare API")
+		return ctrl.Result{}, err
+	}
 
 	// Check if the Gateway instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.

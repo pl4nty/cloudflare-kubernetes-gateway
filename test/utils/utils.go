@@ -238,5 +238,5 @@ func UncommentCode(filename, target, prefix string) error {
 func GetProjectVersion() (string, error) {
 	cmd := exec.Command("git", "describe", "--tag", "--always", "--dirty", "--match", "'v[0-9]*'")
 	version, err := Run(cmd)
-	return strings.TrimSpace(string(version)), err
+	return strings.TrimSpace(version), err
 }
