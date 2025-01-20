@@ -12,8 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
+	
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -31,7 +30,7 @@ type GatewayClassReconciler struct {
 // move the current state of the cluster closer to the desired state.
 //
 // For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.4/pkg/reconcile
 func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
@@ -52,6 +51,7 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// check if GatewayClass controllerName is ours
+	// TODO do we need this since we already have the watcher spec?
 	if gatewayClass.Spec.ControllerName != controllerName {
 		log.Info("Ignoring gatewayclass with non-matching controllerName")
 		return ctrl.Result{}, nil
@@ -102,13 +102,12 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GatewayClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.GatewayClass{
 			Spec: gatewayv1.GatewayClassSpec{
 				ControllerName: "github.com/pl4nty/cloudflare-kubernetes-gateway",
 			},
 		}).
-		WithEventFilter(pred).
+		Named("cloudflare-gatewayclass").
 		Complete(r)
 }

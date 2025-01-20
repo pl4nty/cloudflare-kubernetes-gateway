@@ -10,7 +10,6 @@ import (
 	"github.com/cloudflare/cloudflare-go/v2"
 	"github.com/cloudflare/cloudflare-go/v2/shared"
 	"github.com/cloudflare/cloudflare-go/v2/zero_trust"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,25 +19,34 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-const gatewayClassFinalizer = "cfargotunnel.com/finalizer"
-const gatewayFinalizer = "cfargotunnel.com/finalizer"
-const controllerName = "github.com/pl4nty/cloudflare-kubernetes-gateway"
+const (
+	gatewayClassFinalizer = "cfargotunnel.com/finalizer"
+	gatewayFinalizer      = "cfargotunnel.com/finalizer"
+	controllerName        = "github.com/pl4nty/cloudflare-kubernetes-gateway"
+)
+
+// Definitions to manage status conditions
+const (
+	// typeAvailableGateway represents the status of the Deployment reconciliation
+	typeAvailableGateway = string(gatewayv1.GatewayConditionAccepted)
+	// typeDegradedGateway represents the status used when the custom resource is deleted and the finalizer operations are yet to occur.
+	typeDegradedGateway = string(gatewayv1.GatewayConditionAccepted)
+)
 
 // GatewayReconciler reconciles a Gateway object
 type GatewayReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Recorder  record.EventRecorder
-	Namespace string
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 // The following markers are used to generate the rules permissions (RBAC) on config/rbac using controller-gen
@@ -47,11 +55,11 @@ type GatewayReconciler struct {
 
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get;update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses/finalizers,verbs=update
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;update;watch
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/finalizers,verbs=update
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=update
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch;delete
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
@@ -65,9 +73,7 @@ type GatewayReconciler struct {
 // For further info:
 // - About Operator Pattern: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
 // - About Controllers: https://kubernetes.io/docs/concepts/architecture/controller/
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
-//
-//nolint:gocyclo
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.4/pkg/reconcile
 func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
@@ -75,7 +81,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// The purpose is check if the Custom Resource for the Kind Gateway
 	// is applied on the cluster if not we return nil to stop the reconciliation
 	gateway := &gatewayv1.Gateway{}
-	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
+	err := r.Get(ctx, req.NamespacedName, gateway)
+	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// If the custom resource is not found then it usually means that it was deleted or not created
 			// In this way, we will stop the reconciliation
@@ -87,7 +94,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// check if parent GatewayClass is ours and update finalizer
+	// check if parent GatewayClass is ours
 	gatewayClass := &gatewayv1.GatewayClass{}
 	if err := r.Get(ctx, types.NamespacedName{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -117,7 +124,24 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	account, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
+	// Let's just set the status as Unknown when no status is available
+	if len(gateway.Status.Conditions) == 0 {
+		meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway, Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
+		if err = r.Status().Update(ctx, gateway); err != nil {
+			log.Error(err, "Failed to update Gateway status")
+			return ctrl.Result{}, err
+		}
+
+		// Let's re-fetch the gateway Custom Resource after updating the status
+		// so that we have the latest state of the resource on the cluster and we will avoid
+		// raising the error "the object has been modified, please apply
+		// your changes to the latest version and try again" which would re-trigger the reconciliation
+		// if we try to update it again in the following operations
+		if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
+			log.Error(err, "Failed to re-fetch gateway")
+			return ctrl.Result{}, err
+		}
+	}
 
 	// Let's add a finalizer. Then, we can define some operations which should
 	// occur before the custom resource is deleted.
@@ -125,15 +149,18 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if !controllerutil.ContainsFinalizer(gateway, gatewayFinalizer) {
 		log.Info("Adding Finalizer for Gateway")
 		if ok := controllerutil.AddFinalizer(gateway, gatewayFinalizer); !ok {
-			log.Error(nil, "Failed to add finalizer into the Gateway")
-			return ctrl.Result{Requeue: true}, nil
+			err = fmt.Errorf("finalizer for Gateway was not added")
+			log.Error(err, "Failed to add finalizer for Gateway")
+			return ctrl.Result{}, err
 		}
 
-		if err := r.Update(ctx, gateway); err != nil {
-			log.Error(err, "Failed to update Gateway to add finalizer")
+		if err = r.Update(ctx, gateway); err != nil {
+			log.Error(err, "Failed to update custom resource to add finalizer")
 			return ctrl.Result{}, err
 		}
 	}
+
+	account, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
 
 	// Check if the Gateway instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
@@ -143,18 +170,18 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Info("Performing Finalizer Operations for Gateway before delete CR")
 
 			// Let's add here a status "Downgrade" to reflect that this resource began its process to be terminated.
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeDegradedGateway,
 				Status: metav1.ConditionUnknown, Reason: string(gatewayv1.GatewayReasonPending), ObservedGeneration: gateway.Generation,
-				Message: fmt.Sprintf("Performing finalizer operations for the Gateway: %s ", gateway.Name)})
+				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", gateway.Name)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway finalizer status")
+				log.Error(err, "Failed to update Gateway status")
 				return ctrl.Result{}, err
 			}
 
 			// Perform all operations required before removing the finalizer and allow
 			// the Kubernetes API to remove the custom resource.
-			if err := r.doFinalizerOperationsForGateway(ctx, gatewayClass, gateway, account, api); err != nil {
+			if err := r.doFinalizerOperationsForGateway(gateway, ctx, gatewayClass, account, api); err != nil {
 				log.Error(err, "Failed to complete finalizer operations for Gateway")
 				return ctrl.Result{Requeue: true}, nil
 			}
@@ -168,19 +195,20 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				return ctrl.Result{}, err
 			}
 
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeDegradedGateway,
 				Status: metav1.ConditionTrue, Reason: "Finalizing", ObservedGeneration: gateway.Generation,
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", gateway.Name)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway finalizer status")
+				log.Error(err, "Failed to update Gateway status")
 				return ctrl.Result{}, err
 			}
 
 			log.Info("Removing Finalizer for Gateway after successfully perform the operations")
 			if ok := controllerutil.RemoveFinalizer(gateway, gatewayFinalizer); !ok {
+				err = fmt.Errorf("finalizer for Gateway was not removed")
 				log.Error(err, "Failed to remove finalizer for Gateway")
-				return ctrl.Result{Requeue: true}, nil
+				return ctrl.Result{}, err
 			}
 
 			if err := r.Update(ctx, gateway); err != nil {
@@ -439,26 +467,25 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Check if the deployment already exists, if not create a new one
 	found := &appsv1.Deployment{}
-	err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
-	// TODO update existing deployment eg image changes
-	if err != nil && apierrors.IsNotFound(err) {
-		// Define a new deployment
-		dep, err := r.deploymentForGateway(gateway, token)
-		if err != nil {
-			log.Error(err, "Failed to define new Deployment resource for Gateway")
+	// Define a new deployment
+	dep, err := r.deploymentForGateway(gateway, token)
+	if err != nil {
+		log.Error(err, "Failed to define new Deployment resource for Gateway")
 
-			// The following implementation will update the status
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
-				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+		// The following implementation will update the status
+		meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway,
+			Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+			Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
 
-			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway status")
-				return ctrl.Result{}, err
-			}
-
+		if err := r.Status().Update(ctx, gateway); err != nil {
+			log.Error(err, "Failed to update Gateway status")
 			return ctrl.Result{}, err
 		}
+
+		return ctrl.Result{}, err
+	}
+	err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+	if err != nil && apierrors.IsNotFound(err) {
 
 		log.Info("Creating a new Deployment",
 			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
@@ -474,18 +501,26 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get Deployment")
-		// Let's return the error for the reconciliation be re-trigged again
+		// Let's return the error for the reconciliation be re-triggered again
 		return ctrl.Result{}, err
 	} else {
-		// Define a new deployment
-		dep, err := r.deploymentForGateway(gateway, token)
-		if err != nil {
-			log.Error(err, "Failed to define new Deployment resource for Gateway")
+		if err = r.Update(ctx, dep); err != nil {
+			log.Error(err, "Failed to update Deployment",
+				"Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+
+			// Re-fetch the gateway Custom Resource before updating the status
+			// so that we have the latest state of the resource on the cluster and we will avoid
+			// raising the error "the object has been modified, please apply
+			// your changes to the latest version and try again" which would re-trigger the reconciliation
+			if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
+				log.Error(err, "Failed to re-fetch gateway")
+				return ctrl.Result{}, err
+			}
 
 			// The following implementation will update the status
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway,
 				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
-				Message: fmt.Sprintf("Failed to update Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+				Message: fmt.Sprintf("Failed to update the deployment for the custom resource (%s): (%s)", gateway.Name, err)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
 				log.Error(err, "Failed to update Gateway status")
@@ -493,16 +528,6 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}
 
 			return ctrl.Result{}, err
-		}
-
-		if err := r.Update(ctx, dep); err != nil {
-			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-				log.Info("Conflict when updating Deployment, retrying")
-				return ctrl.Result{Requeue: true}, nil
-			} else {
-				log.Error(err, "Failed to update Deployment")
-				return ctrl.Result{}, err
-			}
 		}
 	}
 
@@ -512,25 +537,20 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// The following implementation will update the status
-	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionProgrammed),
-		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
-		Message: fmt.Sprintf("Tunnel and deployment for gateway (%s) reconciled successfully", gateway.Name)})
+	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway,
+		Status: metav1.ConditionTrue, Reason: tring(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
+		Message: fmt.Sprintf("Deployment for custom resource (%s) reconciled successfully", gateway.Name)})
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
-		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-			log.Info("Conflict when updating Gateway listener status, retrying")
-			return ctrl.Result{Requeue: true}, nil
-		} else {
-			log.Error(err, "Failed to update Gateway status")
-			return ctrl.Result{}, err
-		}
+		log.Error(err, "Failed to update Gateway status")
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
 // finalizeGateway will perform the required operations before delete the CR.
-func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context, gatewayClass *gatewayv1.GatewayClass, gateway *gatewayv1.Gateway, account string, api *cloudflare.Client) error {
+func (r *GatewayReconciler) doFinalizerOperationsForGateway(cr *gatewayv1.Gateway, ctx context.Context, gatewayClass *gatewayv1.GatewayClass, account string, api *cloudflare.Client) {
 	// Note: It is not recommended to use finalizers with the purpose of deleting resources which are
 	// created and managed in the reconciliation. These ones, such as the Deployment created on this reconcile,
 	// are defined as dependent of the custom resource. See that we use the method ctrl.SetControllerReference.
@@ -591,10 +611,10 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	}
 
 	// The following implementation will raise an event
-	r.Recorder.Event(gateway, "Warning", "Deleting",
-		fmt.Sprintf("Gateway %s is being deleted from the namespace %s",
-			gateway.Name,
-			gateway.Namespace))
+	r.Recorder.Event(cr, "Warning", "Deleting",
+		fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
+			cr.Name,
+			cr.Namespace))
 
 	return nil
 }
@@ -649,7 +669,7 @@ func (r *GatewayReconciler) deploymentForGateway(
 						},
 					},
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: &[]bool{true}[0],
+						RunAsNonRoot: ptr.To(true),
 						// IMPORTANT: seccomProfile was introduced with Kubernetes 1.19
 						// If you are looking for to produce solutions to be supported
 						// on lower versions you must remove this option.
@@ -670,9 +690,9 @@ func (r *GatewayReconciler) deploymentForGateway(
 						// Ensure restrictive context for the container
 						// More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
 						SecurityContext: &corev1.SecurityContext{
-							RunAsNonRoot:             &[]bool{true}[0],
-							RunAsUser:                &[]int64{1001}[0],
-							AllowPrivilegeEscalation: &[]bool{false}[0],
+							RunAsNonRoot:             ptr.To(true),
+							RunAsUser:                ptr.To(int64(1001)),
+							AllowPrivilegeEscalation: ptr.To(false),
 							Capabilities: &corev1.Capabilities{
 								Drop: []corev1.Capability{
 									"ALL",
@@ -702,17 +722,10 @@ func (r *GatewayReconciler) deploymentForGateway(
 // labelsForGateway returns the labels for selecting the resources
 // More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 func labelsForGateway(name string) map[string]string {
-	// skip imageTag, to allow version updates to existing deployments
-	// var imageTag string
-	// image, err := imageForGateway()
-	// if err == nil {
-	// 	imageTag = strings.Split(image, ":")[1]
-	// }
 	return map[string]string{
-		"app.kubernetes.io/name": "cloudflare-kubernetes-gateway",
-		// "app.kubernetes.io/version":    imageTag,
-		"app.kubernetes.io/managed-by": "GatewayController",
+		"app.kubernetes.io/name":       "cloudflare-kubernetes-gateway",
 		"cfargotunnel.com/name":        name,
+		"app.kubernetes.io/managed-by": "GatewayController",
 	}
 }
 
@@ -722,19 +735,29 @@ func imageForGateway() (string, error) {
 	var imageEnvVar = "GATEWAY_IMAGE"
 	image, found := os.LookupEnv(imageEnvVar)
 	if !found {
-		return "", fmt.Errorf("unable to find %s environment variable with the image", imageEnvVar)
+		return "", fmt.Errorf("Unable to find %s environment variable with the image", imageEnvVar)
 	}
 	return image, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-// Note that the Deployment will be also watched in order to ensure its
-// desirable state on the cluster
+// The whole idea is to be watching the resources that matter for the controller.
+// When a resource that the controller is interested in changes, the Watch triggers
+// the controller’s reconciliation loop, ensuring that the actual state of the resource
+// matches the desired state as defined in the controller’s logic.
+//
+// Notice how we configured the Manager to monitor events such as the creation, update,
+// or deletion of a Custom Resource (CR) of the Gateway kind, as well as any changes
+// to the Deployment that the controller manages and owns.
 func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
+		// Watch the Gateway CR(s) and trigger reconciliation whenever it
+		// is created, updated, or deleted
 		For(&gatewayv1.Gateway{}).
+		Named("cloudflare-gateway").
+		// Watch the Deployment managed by the GatewayReconciler. If any changes occur to the Deployment
+		// owned and managed by this controller, it will trigger reconciliation, ensuring that the cluster
+		// state aligns with the desired state. See that the ownerRef was set when the Deployment was created.
 		Owns(&appsv1.Deployment{}).
-		WithEventFilter(pred).
 		Complete(r)
 }

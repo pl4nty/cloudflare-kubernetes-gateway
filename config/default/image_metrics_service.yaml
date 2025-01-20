@@ -9,10 +9,10 @@ metadata:
   namespace: system
 spec:
   ports:
-  - name: http
-    port: 2000
-    protocol: TCP
-    targetPort: 2000
+    - name: http
+      port: 2000
+      protocol: TCP
+      targetPort: 2000
   selector:
-    app.kubernetes.io/name: cloudflare-kubernetes-gateway
     app.kubernetes.io/managed-by: GatewayController
+    app.kubernetes.io/name: cloudflare-kubernetes-gateway
