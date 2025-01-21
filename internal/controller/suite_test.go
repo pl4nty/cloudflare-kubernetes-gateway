@@ -95,7 +95,7 @@ var _ = BeforeSuite(func() {
 				Group:     "",
 				Kind:      "Secret",
 				Namespace: &namespace,
-				Name:      "cloudflare-gateway",
+				Name:      "cloudflare",
 			},
 		},
 	})
