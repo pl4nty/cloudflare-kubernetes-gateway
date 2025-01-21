@@ -9,6 +9,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -67,6 +69,37 @@ var _ = BeforeSuite(func() {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
+
+	By("creating the Secret")
+	err = k8sClient.Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cloudflare",
+			Namespace: corev1.NamespaceDefault,
+		},
+		StringData: map[string]string{
+			"ACCOUNT_ID": os.Getenv("CLOUDFLARE_ACCOUNT_ID"),
+			"TOKEN":      os.Getenv("CLOUDFLARE_API_TOKEN"),
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	By("creating the GatewayClass")
+	namespace := gatewayv1.Namespace(corev1.NamespaceDefault)
+	err = k8sClient.Create(ctx, &gatewayv1.GatewayClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cloudflare",
+		},
+		Spec: gatewayv1.GatewayClassSpec{
+			ControllerName: "github.com/pl4nty/cloudflare-kubernetes-gateway",
+			ParametersRef: &gatewayv1.ParametersReference{
+				Group:     "",
+				Kind:      "Secret",
+				Namespace: &namespace,
+				Name:      "cloudflare-gateway",
+			},
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
