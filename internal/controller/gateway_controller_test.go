@@ -64,9 +64,9 @@ var _ = Describe("Gateway controller", func() {
 					Spec: gatewayv1.GatewaySpec{
 						GatewayClassName: "cloudflare",
 						Listeners: []gatewayv1.Listener{{
-							Name:     "cloudflare",
+							Name:     "http",
 							Port:     80,
-							Protocol: "http",
+							Protocol: "HTTP",
 						}},
 					},
 				}

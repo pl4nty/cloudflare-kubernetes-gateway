@@ -332,7 +332,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
 			Status: metav1.ConditionFalse, Reason: string(gatewayv1.GatewayReasonListenersNotValid), ObservedGeneration: gateway.Generation,
 			Message: fmt.Sprintf("No valid listeners for gateway (%s)", gateway.Name)})
-		log.Info("No valid listeners for gateway (%s)", gateway.Name)
+		log.Info("No valid listeners for gateway", "gateway", gateway.Name)
 
 		if err := r.Status().Update(ctx, gateway); err != nil {
 			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
