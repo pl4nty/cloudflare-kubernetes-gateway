@@ -32,7 +32,9 @@ var (
 
 	// projectImage is the name of the image which will be build and loaded
 	// with the code source changes to be tested.
-	projectImage = "ghcr.io/pl4nty/cloudflare-kubernetes-gateway:v0.0.1"
+	// TODO parameterise
+	version      = utils.GetProjectVersion()
+	projectImage = "ghcr.io/pl4nty/cloudflare-kubernetes-gateway:" + version
 )
 
 // TestE2E runs the end-to-end (e2e) test suite for the project. These tests execute in an isolated,
@@ -45,10 +47,6 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "e2e suite")
 
 	fmt.Fprintf(GinkgoWriter, "Starting gateway-api conformance suite\n") //nolint:errcheck
-	version, err := utils.GetProjectVersion()
-	if err != nil {
-		t.Fatalf("failed to get project version: %v", err)
-	}
 
 	log.SetLogger(GinkgoLogr)
 	opts := conformance.DefaultOptions(t)

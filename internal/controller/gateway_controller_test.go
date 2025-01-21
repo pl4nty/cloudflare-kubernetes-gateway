@@ -62,7 +62,7 @@ var _ = Describe("Gateway controller", func() {
 						Namespace: namespace.Name,
 					},
 					Spec: gatewayv1.GatewaySpec{
-						GatewayClassName: "github.com/pl4nty/cloudflare-kubernetes-gateway",
+						GatewayClassName: "cloudflare",
 						Listeners: []gatewayv1.Listener{{
 							Name:     "cloudflare",
 							Port:     80,

@@ -235,8 +235,8 @@ func UncommentCode(filename, target, prefix string) error {
 }
 
 // GetProjectVersion will return the project version
-func GetProjectVersion() (string, error) {
+func GetProjectVersion() string {
 	cmd := exec.Command("git", "describe", "--tag", "--always", "--dirty", "--match", "'v[0-9]*'")
-	version, err := Run(cmd)
-	return strings.TrimSpace(version), err
+	version, _ := Run(cmd)
+	return strings.TrimSpace(version)
 }
