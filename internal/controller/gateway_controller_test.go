@@ -133,7 +133,7 @@ var _ = Describe("Gateway controller", func() {
 				HaveField("Type", Equal(typeAvailableGateway)), &conditions))
 			Expect(conditions).To(HaveLen(1), "Multiple conditions of type %s", typeAvailableGateway)
 			Expect(conditions[0].Status).To(Equal(metav1.ConditionTrue), "condition %s", typeAvailableGateway)
-			Expect(conditions[0].Reason).To(Equal("Reconciling"), "condition %s", typeAvailableGateway)
+			Expect(conditions[0].Reason).To(Equal(gatewayv1.GatewayConditionProgrammed), "condition %s", typeAvailableGateway)
 
 			// By("Creating a ConfigMap to disable deployment")
 			// configMap := &corev1.ConfigMap{
