@@ -18,13 +18,13 @@ import (
 const namespace = "cloudflare-gateway"
 
 // serviceAccountName created for the project
-const serviceAccountName = "cloudflare-kubernetes-gateway-controller-manager"
+const serviceAccountName = "cloudflare-controller-manager"
 
 // metricsServiceName is the name of the metrics service of the project
-const metricsServiceName = "cloudflare-kubernetes-gateway-controller-manager-metrics-service"
+const metricsServiceName = "cloudflare-controller-manager-metrics-service"
 
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
-const metricsRoleBindingName = "cloudflare-kubernetes-gateway-metrics-binding"
+const metricsRoleBindingName = "cloudflare-metrics-binding"
 
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string
