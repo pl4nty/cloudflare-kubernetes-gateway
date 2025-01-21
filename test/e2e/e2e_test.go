@@ -15,7 +15,7 @@ import (
 )
 
 // namespace where the project is deployed in
-const namespace = "cloudflare-kubernetes-gateway"
+const namespace = "cloudflare-gateway"
 
 // serviceAccountName created for the project
 const serviceAccountName = "cloudflare-kubernetes-gateway-controller-manager"
