@@ -31,8 +31,9 @@ jobs:
       - name: Running Test e2e
         run: |
           go mod tidy
-          CERT_MANAGER_INSTALL_SKIP=true make test-e2e
+          make test-e2e
         env:
+          CERT_MANAGER_INSTALL_SKIP: true
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
