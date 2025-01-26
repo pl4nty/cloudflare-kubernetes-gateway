@@ -185,7 +185,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		log.Info("Updating Gateway listeners", "AttachedRoutes", len(ingress))
 		gatewayObj.Status.Listeners = listeners
-		if err := r.Status().Patch(ctx, gatewayObj); err != nil {
+		if err := r.Status().Update(ctx, gatewayObj); err != nil {
 			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
 				log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
 				return ctrl.Result{Requeue: true}, nil

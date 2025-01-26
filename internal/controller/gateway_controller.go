@@ -335,7 +335,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			Message: fmt.Sprintf("No valid listeners for gateway (%s)", gateway.Name)})
 		log.Info("No valid listeners for gateway", "gateway", gateway.Name)
 
-		if err := r.Status().Patch(ctx, gateway); err != nil {
+		if err := r.Status().Update(ctx, gateway); err != nil {
 			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
 				log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
 				return ctrl.Result{Requeue: true}, nil
@@ -351,7 +351,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonAccepted), ObservedGeneration: gateway.Generation,
 		Message: fmt.Sprintf("Validated and accepted gateway (%s)", gateway.Name)})
 
-	if err := r.Status().Patch(ctx, gateway); err != nil {
+	if err := r.Status().Update(ctx, gateway); err != nil {
 		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
 			log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
 			return ctrl.Result{Requeue: true}, nil
@@ -439,12 +439,17 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					return ctrl.Result{}, err
 				}
 
+				if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
+					log.Error(err, "Failed to re-fetch gateway")
+					return ctrl.Result{}, err
+				}
+
 				// The following implementation will update the status
 				meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionProgrammed),
 					Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
 					Message: fmt.Sprintf("Tunnel and deployment for gateway (%s) reconciled successfully", gateway.Name)})
 
-				if err := r.Status().Patch(ctx, gateway); err != nil {
+				if err := r.Status().Update(ctx, gateway); err != nil {
 					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
 						log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
 						return ctrl.Result{Requeue: true}, nil
@@ -548,7 +553,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
 		Message: fmt.Sprintf("Deployment for custom resource (%s) reconciled successfully", gateway.Name)})
 
-	if err := r.Status().Patch(ctx, gateway); err != nil {
+	if err := r.Status().Update(ctx, gateway); err != nil {
 		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
 			log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
 			return ctrl.Result{Requeue: true}, nil
