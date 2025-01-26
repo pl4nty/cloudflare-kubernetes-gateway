@@ -84,8 +84,8 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 10
         # docs recommend 1 core per 1GB RAM
-          # https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/system-requirements/#recommendations
-          resources:
+        # https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/system-requirements/#recommendations
+        resources:
           limits:
             cpu: 500m
             memory: 512Mi
