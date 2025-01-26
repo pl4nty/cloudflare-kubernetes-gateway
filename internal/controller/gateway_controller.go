@@ -126,6 +126,12 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
+	account, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
+	if err != nil {
+		log.Error(err, "Failed to load Cloudflare API")
+		return ctrl.Result{}, err
+	}
+
 	// Let's just set the status as Unknown when no status is available
 	if len(gateway.Status.Conditions) == 0 {
 		meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway, Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
@@ -162,12 +168,6 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	account, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
-	if err != nil {
-		log.Error(err, "Failed to load Cloudflare API")
-		return ctrl.Result{}, err
-	}
-
 	// Check if the Gateway instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	isGatewayMarkedToBeDeleted := gateway.GetDeletionTimestamp() != nil
@@ -176,7 +176,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Info("Performing Finalizer Operations for Gateway before delete CR")
 
 			// Let's add here a status "Downgrade" to reflect that this resource began its process to be terminated.
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeDegradedGateway,
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
 				Status: metav1.ConditionUnknown, Reason: string(gatewayv1.GatewayReasonPending), ObservedGeneration: gateway.Generation,
 				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", gateway.Name)})
 
@@ -201,7 +201,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				return ctrl.Result{}, err
 			}
 
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeDegradedGateway,
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
 				Status: metav1.ConditionTrue, Reason: "Finalizing", ObservedGeneration: gateway.Generation,
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", gateway.Name)})
 
@@ -439,11 +439,6 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					return ctrl.Result{}, err
 				}
 
-				if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
-					log.Error(err, "Failed to re-fetch gateway")
-					return ctrl.Result{}, err
-				}
-
 				// The following implementation will update the status
 				meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionProgrammed),
 					Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
@@ -479,25 +474,26 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Check if the deployment already exists, if not create a new one
 	found := &appsv1.Deployment{}
-	// Define a new deployment
-	dep, err := r.deploymentForGateway(gateway, token)
-	if err != nil {
-		log.Error(err, "Failed to define new Deployment resource for Gateway")
+	err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+	// TODO update existing deployment eg image changes
+	if err != nil && apierrors.IsNotFound(err) {
+		// Define a new deployment
+		dep, err := r.deploymentForGateway(gateway, token)
+		if err != nil {
+			log.Error(err, "Failed to define new Deployment resource for Gateway")
 
-		// The following implementation will update the status
-		meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway,
-			Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
-			Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+			// The following implementation will update the status
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
 
-		if err := r.Status().Update(ctx, gateway); err != nil {
-			log.Error(err, "Failed to update Gateway status")
+			if err := r.Status().Update(ctx, gateway); err != nil {
+				log.Error(err, "Failed to update Gateway status")
+				return ctrl.Result{}, err
+			}
+
 			return ctrl.Result{}, err
 		}
-
-		return ctrl.Result{}, err
-	}
-	err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
-	if err != nil && apierrors.IsNotFound(err) {
 
 		log.Info("Creating a new Deployment",
 			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
@@ -513,26 +509,18 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get Deployment")
-		// Let's return the error for the reconciliation be re-triggered again
+		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
 	} else {
-		if err = r.Update(ctx, dep); err != nil {
-			log.Error(err, "Failed to update Deployment",
-				"Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
-
-			// Re-fetch the gateway Custom Resource before updating the status
-			// so that we have the latest state of the resource on the cluster and we will avoid
-			// raising the error "the object has been modified, please apply
-			// your changes to the latest version and try again" which would re-trigger the reconciliation
-			if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
-				log.Error(err, "Failed to re-fetch gateway")
-				return ctrl.Result{}, err
-			}
+		// Define a new deployment
+		dep, err := r.deploymentForGateway(gateway, token)
+		if err != nil {
+			log.Error(err, "Failed to define new Deployment resource for Gateway")
 
 			// The following implementation will update the status
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway,
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
 				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
-				Message: fmt.Sprintf("Failed to update the deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+				Message: fmt.Sprintf("Failed to update Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
 				log.Error(err, "Failed to update Gateway status")
@@ -540,6 +528,16 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}
 
 			return ctrl.Result{}, err
+		}
+
+		if err := r.Update(ctx, dep); err != nil {
+			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+				log.Info("Conflict when updating Deployment, retrying")
+				return ctrl.Result{Requeue: true}, nil
+			} else {
+				log.Error(err, "Failed to update Deployment")
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -549,7 +547,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// The following implementation will update the status
-	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway,
+	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionProgrammed),
 		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
 		Message: fmt.Sprintf("Deployment for custom resource (%s) reconciled successfully", gateway.Name)})
 
@@ -752,7 +750,7 @@ func imageForGateway() (string, error) {
 	var imageEnvVar = "GATEWAY_IMAGE"
 	image, found := os.LookupEnv(imageEnvVar)
 	if !found {
-		return "", fmt.Errorf("Unable to find %s environment variable with the image", imageEnvVar)
+		return "", fmt.Errorf("unable to find %s environment variable with the image", imageEnvVar)
 	}
 	return image, nil
 }
@@ -767,6 +765,7 @@ func imageForGateway() (string, error) {
 // or deletion of a Custom Resource (CR) of the Gateway kind, as well as any changes
 // to the Deployment that the controller manages and owns.
 func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
 		// Watch the Gateway CR(s) and trigger reconciliation whenever it
 		// is created, updated, or deleted
@@ -776,6 +775,6 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// owned and managed by this controller, it will trigger reconciliation, ensuring that the cluster
 		// state aligns with the desired state. See that the ownerRef was set when the Deployment was created.
 		Owns(&appsv1.Deployment{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		WithEventFilter(pred).
 		Complete(r)
 }
