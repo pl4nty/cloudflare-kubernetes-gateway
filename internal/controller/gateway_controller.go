@@ -176,7 +176,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Info("Performing Finalizer Operations for Gateway before delete CR")
 
 			// Let's add here a status "Downgrade" to reflect that this resource began its process to be terminated.
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeDegradedGateway,
 				Status: metav1.ConditionUnknown, Reason: string(gatewayv1.GatewayReasonPending), ObservedGeneration: gateway.Generation,
 				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", gateway.Name)})
 
@@ -201,7 +201,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				return ctrl.Result{}, err
 			}
 
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeDegradedGateway,
 				Status: metav1.ConditionTrue, Reason: "Finalizing", ObservedGeneration: gateway.Generation,
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", gateway.Name)})
 
@@ -439,6 +439,11 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					return ctrl.Result{}, err
 				}
 
+				if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
+					log.Error(err, "Failed to re-fetch gateway")
+					return ctrl.Result{}, err
+				}
+
 				// The following implementation will update the status
 				meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionProgrammed),
 					Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
@@ -547,7 +552,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// The following implementation will update the status
-	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionProgrammed),
+	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: typeAvailableGateway,
 		Status: metav1.ConditionTrue, Reason: string(gatewayv1.GatewayReasonProgrammed), ObservedGeneration: gateway.Generation,
 		Message: fmt.Sprintf("Deployment for custom resource (%s) reconciled successfully", gateway.Name)})
 
@@ -750,7 +755,7 @@ func imageForGateway() (string, error) {
 	var imageEnvVar = "GATEWAY_IMAGE"
 	image, found := os.LookupEnv(imageEnvVar)
 	if !found {
-		return "", fmt.Errorf("unable to find %s environment variable with the image", imageEnvVar)
+		return "", fmt.Errorf("Unable to find %s environment variable with the image", imageEnvVar)
 	}
 	return image, nil
 }
@@ -765,7 +770,6 @@ func imageForGateway() (string, error) {
 // or deletion of a Custom Resource (CR) of the Gateway kind, as well as any changes
 // to the Deployment that the controller manages and owns.
 func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
 		// Watch the Gateway CR(s) and trigger reconciliation whenever it
 		// is created, updated, or deleted
@@ -775,6 +779,6 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// owned and managed by this controller, it will trigger reconciliation, ensuring that the cluster
 		// state aligns with the desired state. See that the ownerRef was set when the Deployment was created.
 		Owns(&appsv1.Deployment{}).
-		WithEventFilter(pred).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
