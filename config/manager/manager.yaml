@@ -20,7 +20,8 @@ spec:
   selector:
     matchLabels:
       control-plane: controller-manager
-      app.kubernetes.io/name: cloudflare-kubernetes-gateway
+      # adding would break upgrades, let's leave it for now
+      # app.kubernetes.io/name: cloudflare-kubernetes-gateway
   replicas: 1
   template:
     metadata:
