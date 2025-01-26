@@ -16,5 +16,6 @@ spec:
   selector:
     matchLabels:
       control-plane: image
+      app.kubernetes.io/name: cloudflare-kubernetes-gateway
   namespaceSelector:
     any: true

@@ -54,45 +54,45 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - command:
-            - /ko-app/cmd
-          args:
-            - --leader-elect
-            - --health-probe-bind-address=:8081
-          image: controller:latest
-          name: manager
-          env:
-            - name: GATEWAY_IMAGE
-              # renovate: datasource=docker depName=cloudflare/cloudflared
-              value: cloudflare/cloudflared:2024.5.0
-          ports: []
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - "ALL"
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8081
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          readinessProbe:
-            httpGet:
-              path: /readyz
-              port: 8081
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          # docs recommend 1 core per 1GB RAM
+      - command:
+        - /ko-app/cmd
+        args:
+          - --leader-elect
+          - --health-probe-bind-address=:8081
+        image: controller:latest
+        name: manager
+        env:
+        - name: GATEWAY_IMAGE
+          # renovate: datasource=docker depName=cloudflare/cloudflared
+          value: cloudflare/cloudflared:2024.5.0
+        ports: []
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - "ALL"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        # docs recommend 1 core per 1GB RAM
           # https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/system-requirements/#recommendations
           resources:
-            limits:
-              cpu: 500m
-              memory: 512Mi
-            requests:
-              cpu: 10m
-              memory: 64Mi
-          volumeMounts: []
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        volumeMounts: []
       volumes: []
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

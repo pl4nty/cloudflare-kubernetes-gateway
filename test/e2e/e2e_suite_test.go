@@ -32,7 +32,6 @@ var (
 
 	// projectImage is the name of the image which will be build and loaded
 	// with the code source changes to be tested.
-	// TODO parameterise
 	version      = utils.GetProjectVersion()
 	projectImage = "ghcr.io/pl4nty/cloudflare-kubernetes-gateway:" + version
 )

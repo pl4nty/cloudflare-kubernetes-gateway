@@ -150,7 +150,7 @@ var _ = Describe("Manager", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("creating the GatewayClass")
-			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/gatewayclass.yaml")
+			cmd = exec.Command("kubectl", "apply", "-f", "config/samples/gateway_v1_gatewayclass.yaml")
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})

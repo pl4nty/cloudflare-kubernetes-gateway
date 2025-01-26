@@ -1,0 +1,6 @@
+## Append samples of your project ##
+resources:
+- gateway_v1_gatewayclass.yaml
+- gateway_v1_gateway.yaml
+- gateway_v1_httproute.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
