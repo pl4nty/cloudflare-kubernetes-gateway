@@ -284,6 +284,7 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.HTTPRoute{}).
 		Named("cloudflare-httproute").
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 

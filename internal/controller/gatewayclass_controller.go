@@ -109,5 +109,6 @@ func (r *GatewayClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		}).
 		Named("cloudflare-gatewayclass").
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }

@@ -336,10 +336,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 		if err := r.Status().Update(ctx, gateway); err != nil {
 			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-				log.Info("Conflict when updating Gateway listener status, retrying")
+				log.Info("Conflict when updating Gateway status, retrying")
 				return ctrl.Result{Requeue: true}, nil
 			} else {
-				log.Error(err, "Failed to update Gateway listener status")
+				log.Error(err, "Failed to update Gateway status")
 				return ctrl.Result{}, err
 			}
 		}
@@ -352,10 +352,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
 		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-			log.Info("Conflict when updating Gateway listener status, retrying")
+			log.Info("Conflict when updating Gateway status, retrying")
 			return ctrl.Result{Requeue: true}, nil
 		} else {
-			log.Error(err, "Failed to update Gateway listener status")
+			log.Error(err, "Failed to update Gateway status")
 			return ctrl.Result{}, err
 		}
 	}
@@ -367,7 +367,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "429 Too Many Requests") {
-			log.Error(err, "Rate limited, requeueing after 10 minutes")
+			log.Info("Rate limited by Cloudflare, requeueing after 10 minutes")
 			return ctrl.Result{
 				RequeueAfter: time.Minute * 10, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
 			}, nil
@@ -445,7 +445,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 				if err := r.Status().Update(ctx, gateway); err != nil {
 					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-						log.Info("Conflict when updating Gateway listener status, retrying")
+						log.Info("Conflict when updating Gateway status, retrying")
 						return ctrl.Result{Requeue: true}, nil
 					} else {
 						log.Error(err, "Failed to update Gateway status")
@@ -765,5 +765,6 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// owned and managed by this controller, it will trigger reconciliation, ensuring that the cluster
 		// state aligns with the desired state. See that the ownerRef was set when the Deployment was created.
 		Owns(&appsv1.Deployment{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
