@@ -337,7 +337,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 		if err := r.Status().Update(ctx, gateway); err != nil {
 			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-				log.Info("Conflict when updating Gateway status, retrying")
+				log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
 				return ctrl.Result{Requeue: true}, nil
 			} else {
 				log.Error(err, "Failed to update Gateway status")
@@ -353,7 +353,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
 		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-			log.Info("Conflict when updating Gateway status, retrying")
+			log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
 			return ctrl.Result{Requeue: true}, nil
 		} else {
 			log.Error(err, "Failed to update Gateway status")
@@ -446,7 +446,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 				if err := r.Status().Update(ctx, gateway); err != nil {
 					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-						log.Info("Conflict when updating Gateway status, retrying")
+						log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
 						return ctrl.Result{Requeue: true}, nil
 					} else {
 						log.Error(err, "Failed to update Gateway status")
@@ -549,8 +549,13 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Message: fmt.Sprintf("Deployment for custom resource (%s) reconciled successfully", gateway.Name)})
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
-		log.Error(err, "Failed to update Gateway status")
-		return ctrl.Result{}, err
+		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+			log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
+			return ctrl.Result{Requeue: true}, nil
+		} else {
+			log.Error(err, "Failed to update Gateway status")
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil
