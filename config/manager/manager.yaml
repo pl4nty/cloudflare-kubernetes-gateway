@@ -65,7 +65,7 @@ spec:
         env:
         - name: GATEWAY_IMAGE
           # renovate: datasource=docker depName=cloudflare/cloudflared
-          value: cloudflare/cloudflared:2024.5.0
+          value: cloudflare/cloudflared:2025.1.0
         ports: []
         securityContext:
           allowPrivilegeEscalation: false
