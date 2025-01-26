@@ -1,5 +1,6 @@
 resources:
 - monitor.yaml
+- image_monitor.yaml
 
 # [PROMETHEUS-WITH-CERTS] The following patch configures the ServiceMonitor in ../prometheus
 # to securely reference certificates created and managed by cert-manager.
