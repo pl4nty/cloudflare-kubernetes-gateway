@@ -20,6 +20,8 @@ spec:
   selector:
     matchLabels:
       control-plane: controller-manager
+      # adding would break upgrades, let's leave it for now
+      # app.kubernetes.io/name: cloudflare-kubernetes-gateway
   replicas: 1
   template:
     metadata:
@@ -27,6 +29,7 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: controller-manager
+        app.kubernetes.io/name: cloudflare-kubernetes-gateway
     spec:
       affinity:
         nodeAffinity:
@@ -45,6 +48,9 @@ spec:
                   values:
                     - linux
       securityContext:
+        # Projects are configured by default to adhere to the "restricted" Pod Security Standards.
+        # This ensures that deployments meet the highest security requirements for Kubernetes.
+        # For more details, see: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
@@ -54,12 +60,13 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: controller
+        image: controller:latest
         name: manager
         env:
         - name: GATEWAY_IMAGE
           # renovate: datasource=docker depName=cloudflare/cloudflared
-          value: "cloudflare/cloudflared:2025.1.0"
+          value: cloudflare/cloudflared:2025.1.0
+        ports: []
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -86,5 +93,7 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+        volumeMounts: []
+      volumes: []
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

@@ -6,6 +6,17 @@
   "postUpdateOptions": [
     "gomodTidy"
   ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "go",
+        "k8s.io/**",
+        "sigs.k8s.io/controller-runtime",
+        "github.com/onsi/**"
+      ],
+      "enabled": false
+    }
+  ],
   "regexManagers": [
     {
       "description": "Process custom dependencies",

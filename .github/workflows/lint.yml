@@ -1,0 +1,36 @@
+name: Lint
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    name: Run on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.63.4
+
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: securego/gosec@v2.21.4
+        with:
+          args: "-no-fail -fmt sarif -out results.sarif ./..."
+      - uses: github/codeql-action/upload-sarif@v3.28.0
+        with:
+          sarif_file: results.sarif

@@ -14,5 +14,5 @@ spec:
     protocol: TCP
     targetPort: 2000
   selector:
-    app.kubernetes.io/name: cloudflare-kubernetes-gateway
     app.kubernetes.io/managed-by: GatewayController
+    app.kubernetes.io/name: cloudflare-kubernetes-gateway

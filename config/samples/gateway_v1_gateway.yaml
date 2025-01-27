@@ -1,0 +1,14 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  labels:
+    app.kubernetes.io/name: cloudflare-kubernetes-gateway
+    app.kubernetes.io/managed-by: kustomize
+  name: gateway-sample
+  namespace: cloudflare-gateway
+spec:
+  gatewayClassName: gateway-conformance
+  listeners:
+  - protocol: HTTP
+    port: 80
+    name: http

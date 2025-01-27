@@ -24,8 +24,7 @@ import (
 // HTTPRouteReconciler reconciles a HTTPRoute object
 type HTTPRouteReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Namespace string
+	Scheme *runtime.Scheme
 }
 
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get
@@ -37,9 +36,8 @@ type HTTPRouteReconciler struct {
 // move the current state of the cluster closer to the desired state.
 //
 // For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
-//
-//nolint:gocyclo
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.0/pkg/reconcile
+// nolint:gocyclo
 func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
@@ -188,8 +186,13 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Info("Updating Gateway listeners", "AttachedRoutes", len(ingress))
 		gatewayObj.Status.Listeners = listeners
 		if err := r.Status().Update(ctx, gatewayObj); err != nil {
-			log.Error(err, "Failed to update Gateway status")
-			return ctrl.Result{}, err
+			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+				log.Info("Conflict when updating Gateway status, retrying", "error", err.Error())
+				return ctrl.Result{Requeue: true}, nil
+			} else {
+				log.Error(err, "Failed to update Gateway status")
+				return ctrl.Result{}, err
+			}
 		}
 
 		account, api, err := InitCloudflareApi(ctx, r.Client, string(gateway.Spec.GatewayClassName))
@@ -284,10 +287,10 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.HTTPRoute{}).
-		WithEventFilter(pred).
+		Named("cloudflare-httproute").
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 

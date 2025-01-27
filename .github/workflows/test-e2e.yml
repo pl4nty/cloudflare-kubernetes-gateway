@@ -1,0 +1,60 @@
+name: E2E Tests
+
+on:
+  pull_request:
+
+jobs:
+  test-e2e:
+    name: Run on Ubuntu
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install the latest version of kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Verify kind installation
+        run: kind version
+
+      - name: Create kind cluster
+        run: kind create cluster
+
+      - name: Running Test e2e
+        run: |
+          go mod tidy
+          make test-e2e
+        continue-on-error: true
+        env:
+          CERT_MANAGER_INSTALL_SKIP: true
+          E2E_TIMEOUT: 15m
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Get manager logs
+        run: kubectl logs -n cloudflare-gateway deployment/cloudflare-controller-manager
+
+      - name: Upload conformance report
+        uses: actions/upload-artifact@v4.5.0
+        with:
+          name: conformance-report
+          path: '*-report.yaml'
+
+      - uses: docker/login-action@v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway:$(git describe --tag --always --dirty --match 'v[0-9]*')
