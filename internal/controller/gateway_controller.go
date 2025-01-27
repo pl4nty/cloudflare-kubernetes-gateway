@@ -41,8 +41,8 @@ const (
 // GatewayReconciler reconciles a Gateway object
 type GatewayReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Recorder  record.EventRecorder
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 // The following markers are used to generate the rules permissions (RBAC) on config/rbac using controller-gen

@@ -57,4 +57,4 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway:$(git describe --tag --always --match 'v[0-9]*')
+      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway:$(git describe --tag --always --dirty --match 'v[0-9]*')
