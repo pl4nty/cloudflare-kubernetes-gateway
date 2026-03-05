@@ -231,5 +231,5 @@ ln -sf "$$(realpath "$(1)-$(3)")" "$(1)"
 endef
 
 define gomodver
-$(shell go list -m -f '{{"{{"}}if .Replace{{"}}"}}{{"{{"}}.Replace.Version{{"}}"}}{{"{{"}}else{{"}}"}}{{"{{"}}.Version{{"}}"}}{{"{{"}}end{{"}}"}}' $(1) 2>/dev/null)
+$(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
 endef
