@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.8.1...v0.8.2) (2026-03-05)
+
+
+### Bug Fixes
+
+* **deps:** update kubernetes packages to v0.35.2 ([#215](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/215)) ([8252164](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/8252164eb19e05fd437aec91488ab68f6d36c306))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.28.1 ([#233](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/233)) ([9238c4b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/9238c4bc1372ac51ac199965b85b5066a8c2c682))
+* **deps:** update module github.com/onsi/gomega to v1.39.1 ([#234](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/234)) ([0a69089](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/0a69089e17e94d146bd3993c1cffcaecdf229e08))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.23.2 ([#235](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/235)) ([e049825](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/e049825dbd8eb15c8b53d45dcc67caa497e1c174))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.23.3 ([#249](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/249)) ([046a0dc](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/046a0dc87ed026ce068b3177cfae54f7a040201f))
+* **deps:** update module sigs.k8s.io/gateway-api to v1.5.0 ([#236](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/236)) ([85071d0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/85071d05132addd442594ed576b823674c4a44de))
+* use explicit docker.io registry for cloudflared ([#247](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/247)) ([c4485a6](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/c4485a675d420df701a10b53a12e21955bfe4144))
+
 ## [0.8.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.8.0...v0.8.1) (2025-01-09)
 
 
