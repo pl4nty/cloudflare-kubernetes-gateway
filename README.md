@@ -4,7 +4,7 @@ Manage Kubernetes ingress traffic with Cloudflare Tunnels via the [Gateway API](
 
 ## Getting Started
 
-1. Install v1 or later of the Gateway API CRDs: `kubectl apply -k github.com/kubernetes-sigs/gateway-api//config/crd?ref=v1.0.0`
+1. Install v1 or later of the Gateway API CRDs: `kubectl apply --server-side -k github.com/kubernetes-sigs/gateway-api//config/crd?ref=v1.5.1`
 2. Install cloudflare-kubernetes-gateway: `kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/default?ref=v0.8.2` <!-- x-release-please-version -->
 3. [Find your Cloudflare account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/)
 4. [Create a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with the Account Cloudflare Tunnel Edit and Zone DNS Edit permissions
