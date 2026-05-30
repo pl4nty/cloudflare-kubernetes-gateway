@@ -77,7 +77,7 @@ jobs:
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
     steps:
-      - uses: googleapis/release-please-action@v4.4.0
+      - uses: googleapis/release-please-action@v4.4.1
         id: release
 
   release:
