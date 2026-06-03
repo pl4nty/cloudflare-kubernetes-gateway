@@ -14,7 +14,7 @@ import (
 	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func InitCloudflareApi(ctx context.Context, c client.Client, gatewayClassName string) (string, *cloudflare.Client, error) {
+func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName string) (string, *cloudflare.Client, error) {
 	log := log.FromContext(ctx)
 
 	gatewayClass := &gw.GatewayClass{}
