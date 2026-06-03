@@ -30,5 +30,18 @@
       ],
       "datasourceTemplate": "github-release-attachments"
     }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackagePrefixes": [
+        "k8s.io/api",
+        "k8s.io/apimachinery",
+        "k8s.io/client-go"
+      ],
+      "enabled": false
+    }
   ]
 }
