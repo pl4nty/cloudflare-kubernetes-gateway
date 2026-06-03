@@ -59,7 +59,7 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// validate parameters
 	msg := ""
-	_, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
+	_, api, err := InitCloudflareAPI(ctx, r.Client, gatewayClass.Name)
 	if err == nil {
 		token, err := api.User.Tokens.Verify(ctx)
 		if err == nil {

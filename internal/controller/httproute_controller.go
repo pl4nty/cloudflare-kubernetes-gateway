@@ -192,7 +192,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
-		account, api, err := InitCloudflareApi(ctx, r.Client, string(gateway.Spec.GatewayClassName))
+		account, api, err := InitCloudflareAPI(ctx, r.Client, string(gateway.Spec.GatewayClassName))
 		if err != nil {
 			log.Error(err, "Failed to initialize Cloudflare API")
 			return ctrl.Result{}, err

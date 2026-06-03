@@ -117,7 +117,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	account, api, err := InitCloudflareApi(ctx, r.Client, gatewayClass.Name)
+	account, api, err := InitCloudflareAPI(ctx, r.Client, gatewayClass.Name)
 
 	// Let's add a finalizer. Then, we can define some operations which should
 	// occur before the custom resource is deleted.
