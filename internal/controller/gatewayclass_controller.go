@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cloudflare/cloudflare-go/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,15 +60,28 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// validate parameters
 	msg := ""
-	_, api, err := InitCloudflareAPI(ctx, r.Client, gatewayClass.Name)
+	account, api, err := InitCloudflareAPI(ctx, r.Client, gatewayClass.Name)
 	if err == nil {
-		token, err := api.User.Tokens.Verify(ctx)
-		if err == nil {
+		token, verifyErr := api.User.Tokens.Verify(ctx)
+		if verifyErr == nil {
 			if token.Status != "active" {
 				msg = fmt.Sprintf("Token status is %s, is not active. Please check the Cloudflare dashboard", token.Status)
 			}
+		} else if account != "" {
+			// User-token verification failed (e.g. 401 for an account-owned
+			// token, which didn't exist when /user/tokens/verify was the only
+			// path). Fall back to verifying as an account-owned token against
+			// /accounts/{account_id}/tokens/verify.
+			status, accountErr := verifyAccountToken(ctx, api, account)
+			if accountErr == nil {
+				if status != "active" {
+					msg = fmt.Sprintf("Token status is %s, is not active. Please check the Cloudflare dashboard", status)
+				}
+			} else {
+				msg = verifyErr.Error() + " Ensure ACCOUNT_ID and TOKEN are valid"
+			}
 		} else {
-			msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are valid"
+			msg = verifyErr.Error() + " Ensure ACCOUNT_ID and TOKEN are valid"
 		}
 	} else {
 		msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are set"
@@ -98,6 +112,25 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// verifyAccountToken verifies an account-owned Cloudflare API token against
+// GET /accounts/{account_id}/tokens/verify and returns its status. Account
+// tokens didn't exist when /user/tokens/verify was the only verification path,
+// so they 401 against that endpoint. cloudflare-go/v2 v2.4.0 has no typed
+// Accounts.Tokens.Verify, so this uses the client's raw request helper; the
+// REST path and the {"result":{"status":...}} envelope shape are stable across
+// SDK versions, keeping this tolerant of the pending v7 bump.
+func verifyAccountToken(ctx context.Context, api *cloudflare.Client, account string) (string, error) {
+	var env struct {
+		Result struct {
+			Status string `json:"status"`
+		} `json:"result"`
+	}
+	if err := api.Get(ctx, fmt.Sprintf("/accounts/%s/tokens/verify", account), nil, &env); err != nil {
+		return "", err
+	}
+	return env.Result.Status, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
