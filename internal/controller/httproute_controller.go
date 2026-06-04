@@ -242,16 +242,16 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				ZoneID:  cloudflare.String(zoneID),
 				Proxied: cloudflare.Bool(true),
 				Type:    cloudflare.F[dns.RecordListParamsType]("CNAME"),
-				Name:    cloudflare.String(hostname),
+				Name:    cloudflare.F(dns.RecordListParamsName{Exact: cloudflare.String(hostname)}),
 			})
 			if len(records.Result) == 0 {
 				_, err := api.DNS.Records.New(ctx, dns.RecordNewParams{
 					ZoneID: cloudflare.String(zoneID),
-					Record: dns.CNAMERecordParam{
+					Body: dns.CNAMERecordParam{
 						Proxied: cloudflare.Bool(true),
 						Type:    cloudflare.F[dns.CNAMERecordType]("CNAME"),
 						Name:    cloudflare.String(hostname),
-						Content: cloudflare.F[interface{}](content),
+						Content: cloudflare.String(content),
 						Comment: cloudflare.String(comment),
 					},
 				})
@@ -262,11 +262,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			} else {
 				_, err := api.DNS.Records.Update(ctx, records.Result[0].ID, dns.RecordUpdateParams{
 					ZoneID: cloudflare.String(zoneID),
-					Record: dns.CNAMERecordParam{
+					Body: dns.CNAMERecordParam{
 						Proxied: cloudflare.Bool(true),
 						Type:    cloudflare.F[dns.CNAMERecordType]("CNAME"),
 						Name:    cloudflare.String(hostname),
-						Content: cloudflare.F[interface{}](content),
+						Content: cloudflare.String(content),
 						Comment: cloudflare.String(comment),
 					},
 				})
