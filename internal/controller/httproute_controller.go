@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudflare/cloudflare-go/v2"
-	"github.com/cloudflare/cloudflare-go/v2/dns"
-	"github.com/cloudflare/cloudflare-go/v2/zero_trust"
-	"github.com/cloudflare/cloudflare-go/v2/zones"
+	"github.com/cloudflare/cloudflare-go/v7"
+	"github.com/cloudflare/cloudflare-go/v7/dns"
+	"github.com/cloudflare/cloudflare-go/v7/zero_trust"
+	"github.com/cloudflare/cloudflare-go/v7/zones"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -111,7 +111,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// fan out to siblings
-		ingress := []zero_trust.TunnelConfigurationUpdateParamsConfigIngress{}
+		ingress := []zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress{}
 		for _, route := range siblingRoutes {
 			for _, rule := range route.Spec.Rules {
 				paths := map[string]bool{}
@@ -154,7 +154,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				for _, hostname := range route.Spec.Hostnames {
 					for path := range paths {
 						for service := range services {
-							ingress = append(ingress, zero_trust.TunnelConfigurationUpdateParamsConfigIngress{
+							ingress = append(ingress, zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress{
 								Hostname: cloudflare.String(string(hostname)),
 								Path:     cloudflare.String(path),
 								Service:  cloudflare.String(service),
@@ -166,7 +166,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// last rule must be the catch-all
-		ingress = append(ingress, zero_trust.TunnelConfigurationUpdateParamsConfigIngress{
+		ingress = append(ingress, zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress{
 			Service: cloudflare.String("http_status:404"),
 		})
 
@@ -213,11 +213,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		tunnel := tunnels.Result[0]
 
-		_, err = api.ZeroTrust.Tunnels.Configurations.Update(ctx, tunnel.ID, zero_trust.TunnelConfigurationUpdateParams{
+		_, err = api.ZeroTrust.Tunnels.Cloudflared.Configurations.Update(ctx, tunnel.ID, zero_trust.TunnelCloudflaredConfigurationUpdateParams{
 			AccountID: cloudflare.String(account),
-			Config: cloudflare.F[zero_trust.TunnelConfigurationUpdateParamsConfig](
-				zero_trust.TunnelConfigurationUpdateParamsConfig{
-					Ingress: cloudflare.F[[]zero_trust.TunnelConfigurationUpdateParamsConfigIngress](ingress),
+			Config: cloudflare.F[zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig](
+				zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig{
+					Ingress: cloudflare.F[[]zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress](ingress),
 				},
 			),
 		})
@@ -242,16 +242,16 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				ZoneID:  cloudflare.String(zoneID),
 				Proxied: cloudflare.Bool(true),
 				Type:    cloudflare.F[dns.RecordListParamsType]("CNAME"),
-				Name:    cloudflare.String(hostname),
+				Name:    cloudflare.F(dns.RecordListParamsName{Exact: cloudflare.String(hostname)}),
 			})
 			if len(records.Result) == 0 {
 				_, err := api.DNS.Records.New(ctx, dns.RecordNewParams{
 					ZoneID: cloudflare.String(zoneID),
-					Record: dns.CNAMERecordParam{
+					Body: dns.CNAMERecordParam{
 						Proxied: cloudflare.Bool(true),
 						Type:    cloudflare.F[dns.CNAMERecordType]("CNAME"),
 						Name:    cloudflare.String(hostname),
-						Content: cloudflare.F[interface{}](content),
+						Content: cloudflare.String(content),
 						Comment: cloudflare.String(comment),
 					},
 				})
@@ -262,11 +262,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			} else {
 				_, err := api.DNS.Records.Update(ctx, records.Result[0].ID, dns.RecordUpdateParams{
 					ZoneID: cloudflare.String(zoneID),
-					Record: dns.CNAMERecordParam{
+					Body: dns.CNAMERecordParam{
 						Proxied: cloudflare.Bool(true),
 						Type:    cloudflare.F[dns.CNAMERecordType]("CNAME"),
 						Name:    cloudflare.String(hostname),
-						Content: cloudflare.F[interface{}](content),
+						Content: cloudflare.String(content),
 						Comment: cloudflare.String(comment),
 					},
 				})
