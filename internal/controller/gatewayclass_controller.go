@@ -57,20 +57,20 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
-	// validate parameters
+	// validate token
 	msg := ""
 	_, api, err := InitCloudflareAPI(ctx, r.Client, gatewayClass.Name)
-	if err == nil {
+	if err != nil {
+		msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are set"
+	} else {
 		token, err := api.User.Tokens.Verify(ctx)
-		if err == nil {
+		if err != nil {
+			msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are valid"
+		} else {
 			if token.Status != "active" {
 				msg = fmt.Sprintf("Token status is %s, is not active. Please check the Cloudflare dashboard", token.Status)
 			}
-		} else {
-			msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are valid"
 		}
-	} else {
-		msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are set"
 	}
 
 	var condition metav1.Condition
