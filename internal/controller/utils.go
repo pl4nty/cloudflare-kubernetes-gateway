@@ -2,8 +2,8 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/cloudflare/cloudflare-go/v7"
