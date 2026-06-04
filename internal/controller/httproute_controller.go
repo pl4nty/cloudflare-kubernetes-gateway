@@ -50,7 +50,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	err := r.Get(ctx, req.NamespacedName, target)
 	if err == nil {
 		for _, parentRef := range target.Spec.ParentRefs {
-			namespace := target.ObjectMeta.Namespace
+			namespace := target.Namespace
 			if parentRef.Namespace != nil {
 				namespace = string(*parentRef.Namespace)
 			}
@@ -99,7 +99,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		siblingRoutes := []gatewayv1.HTTPRoute{}
 		for _, searchRoute := range routes.Items {
 			for _, searchParent := range searchRoute.Spec.ParentRefs {
-				namespace := searchRoute.ObjectMeta.Namespace
+				namespace := searchRoute.Namespace
 				if searchParent.Namespace != nil {
 					namespace = string(*searchParent.Namespace)
 				}
@@ -215,10 +215,9 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		_, err = api.ZeroTrust.Tunnels.Cloudflared.Configurations.Update(ctx, tunnel.ID, zero_trust.TunnelCloudflaredConfigurationUpdateParams{
 			AccountID: cloudflare.String(account),
-			Config: cloudflare.F[zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig](
-				zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig{
-					Ingress: cloudflare.F[[]zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress](ingress),
-				},
+			Config: cloudflare.F(zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig{
+				Ingress: cloudflare.F(ingress),
+			},
 			),
 		})
 		if err != nil {

@@ -65,8 +65,5 @@ func VerifyAPIToken(ctx context.Context, account string, api *cloudflare.Client)
 			return fmt.Sprintf("Token status is %s, not active. Please check the Cloudflare dashboard", token.Status), nil
 		}
 	}
-
-	// TODO: check permissions of token
-
 	return "", nil
 }
