@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -57,20 +56,12 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
-	// validate token
+	account, api, err := InitCloudflareAPI(ctx, r.Client, gatewayClass.Name)
 	msg := ""
-	_, api, err := InitCloudflareAPI(ctx, r.Client, gatewayClass.Name)
 	if err != nil {
 		msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are set"
 	} else {
-		token, err := api.User.Tokens.Verify(ctx)
-		if err != nil {
-			msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are valid"
-		} else {
-			if token.Status != "active" {
-				msg = fmt.Sprintf("Token status is %s, is not active. Please check the Cloudflare dashboard", token.Status)
-			}
-		}
+		msg, _ = VerifyAPIToken(ctx, account, api)
 	}
 
 	var condition metav1.Condition
