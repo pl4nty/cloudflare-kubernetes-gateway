@@ -2,11 +2,14 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"errors"
 	"strings"
 
 	"github.com/cloudflare/cloudflare-go/v7"
+	"github.com/cloudflare/cloudflare-go/v7/accounts"
 	"github.com/cloudflare/cloudflare-go/v7/option"
+
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,4 +47,26 @@ func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName st
 	api := cloudflare.NewClient(option.WithAPIToken(strings.TrimSpace(string(secret.Data["TOKEN"]))))
 
 	return account, api, nil
+}
+
+func VerifyAPIToken(ctx context.Context, account string, api *cloudflare.Client) (string, error) {
+	token, err := api.User.Tokens.Verify(ctx)
+	if err != nil {
+		token, err := api.Accounts.Tokens.Verify(ctx, accounts.TokenVerifyParams{AccountID: cloudflare.String(account)})
+		if err != nil {
+			return err.Error() + " Ensure ACCOUNT_ID and TOKEN are valid", nil
+		} else {
+			if token.Status != "active" {
+				return fmt.Sprintf("Token status is %s, not active. Please check the Cloudflare dashboard", token.Status), nil
+			}
+		}
+	} else {
+		if token.Status != "active" {
+			return fmt.Sprintf("Token status is %s, not active. Please check the Cloudflare dashboard", token.Status), nil
+		}
+	}
+
+	// TODO: check permissions of token
+
+	return "", nil
 }
