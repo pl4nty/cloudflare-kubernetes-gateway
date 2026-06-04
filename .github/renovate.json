@@ -26,7 +26,7 @@
         "/Makefile/"
       ],
       "matchStrings": [
-        "https://github.com/(?<depName>.*)/releases/download/(?<currentValue>[^\\s]+)/[^\\s]+"
+        "https://github.com/(?<packageName>.*)/releases/download/(?<currentValue>[^\\s]+)/[^\\s]+"
       ],
       "datasourceTemplate": "github-release-attachments"
     }
@@ -42,6 +42,18 @@
         "k8s.io/client-go"
       ],
       "enabled": false
+    },
+    {
+      "matchDatasources": [
+        "go",
+        "github-release-attachments"
+      ],
+      "matchPackageNames": [
+        "sigs.k8s.io/gateway-api",
+        "kubernetes-sigs/gateway-api"
+      ],
+      "groupName": "Gateway API",
+      "groupSlug": "kubernetes-sigs/gateway-api"
     }
   ]
 }
