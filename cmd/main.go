@@ -129,7 +129,7 @@ func main() {
 	if err = (&controller.GatewayReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
-		Recorder:  mgr.GetEventRecorderFor("gateway-controller"),
+		Recorder:  mgr.GetEventRecorder("gateway-controller"),
 		Namespace: clusterResourceNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Gateway")
