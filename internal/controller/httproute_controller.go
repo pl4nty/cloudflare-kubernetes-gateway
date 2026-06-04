@@ -111,7 +111,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// fan out to siblings
-		ingress := []zero_trust.TunnelConfigurationUpdateParamsConfigIngress{}
+		ingress := []zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress{}
 		for _, route := range siblingRoutes {
 			for _, rule := range route.Spec.Rules {
 				paths := map[string]bool{}
@@ -154,7 +154,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				for _, hostname := range route.Spec.Hostnames {
 					for path := range paths {
 						for service := range services {
-							ingress = append(ingress, zero_trust.TunnelConfigurationUpdateParamsConfigIngress{
+							ingress = append(ingress, zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress{
 								Hostname: cloudflare.String(string(hostname)),
 								Path:     cloudflare.String(path),
 								Service:  cloudflare.String(service),
@@ -166,7 +166,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// last rule must be the catch-all
-		ingress = append(ingress, zero_trust.TunnelConfigurationUpdateParamsConfigIngress{
+		ingress = append(ingress, zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress{
 			Service: cloudflare.String("http_status:404"),
 		})
 
@@ -213,11 +213,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		tunnel := tunnels.Result[0]
 
-		_, err = api.ZeroTrust.Tunnels.Configurations.Update(ctx, tunnel.ID, zero_trust.TunnelConfigurationUpdateParams{
+		_, err = api.ZeroTrust.Tunnels.Configurations.Update(ctx, tunnel.ID, zero_trust.TunnelCloudflaredConfigurationUpdateParams{
 			AccountID: cloudflare.String(account),
-			Config: cloudflare.F[zero_trust.TunnelConfigurationUpdateParamsConfig](
-				zero_trust.TunnelConfigurationUpdateParamsConfig{
-					Ingress: cloudflare.F[[]zero_trust.TunnelConfigurationUpdateParamsConfigIngress](ingress),
+			Config: cloudflare.F[zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig](
+				zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig{
+					Ingress: cloudflare.F[[]zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress](ingress),
 				},
 			),
 		})
