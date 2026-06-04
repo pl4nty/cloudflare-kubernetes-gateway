@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -37,7 +37,7 @@ const controllerName = "github.com/pl4nty/cloudflare-kubernetes-gateway"
 type GatewayReconciler struct {
 	client.Client
 	Scheme    *runtime.Scheme
-	Recorder  record.EventRecorder
+	Recorder  events.EventRecorder
 	Namespace string
 }
 
@@ -591,10 +591,8 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	}
 
 	// The following implementation will raise an event
-	r.Recorder.Event(gateway, "Warning", "Deleting",
-		fmt.Sprintf("Gateway %s is being deleted from the namespace %s",
-			gateway.Name,
-			gateway.Namespace))
+	r.Recorder.Eventf(gateway, nil, "Warning", "Deleting", "Deleted",
+		"Gateway %s is being deleted from the namespace %s", gateway.Name, gateway.Namespace)
 
 	return nil
 }
