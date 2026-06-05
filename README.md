@@ -2,7 +2,7 @@
 
 Manage Kubernetes ingress traffic with [Cloudflare Tunnels](https://developers.cloudflare.com/tunnel/) via the [Gateway API](https://gateway-api.sigs.k8s.io/).
 
-## Requirements
+## Prerequisites
 
 - [Gateway API](https://gateway-api.sigs.k8s.io/guides/getting-started/introduction/#installing-gateway-api) v1.x
 
@@ -29,7 +29,7 @@ Manage Kubernetes ingress traffic with [Cloudflare Tunnels](https://developers.c
      name: cloudflare-gateway-token
      namespace: cloudflare-gateway
    type: Opaque
-   data:
+   stringData:
      ACCOUNT_ID: <account-id>
      TOKEN: <api-token>
    ```
@@ -40,7 +40,6 @@ Manage Kubernetes ingress traffic with [Cloudflare Tunnels](https://developers.c
    <summary>GatewayClass manifest</summary>
 
    ```yaml
-   # kubectl apply -f
    apiVersion: gateway.networking.k8s.io/v1
    kind: GatewayClass
    metadata:
