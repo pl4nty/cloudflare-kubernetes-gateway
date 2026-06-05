@@ -1,65 +1,109 @@
 # Cloudflare Kubernetes Gateway
 
-Manage Kubernetes ingress traffic with Cloudflare Tunnels via the [Gateway API](https://gateway-api.sigs.k8s.io/).
+Manage Kubernetes ingress traffic with [Cloudflare Tunnels](https://developers.cloudflare.com/tunnel/) via the [Gateway API](https://gateway-api.sigs.k8s.io/).
+
+## Requirements
+
+- [Gateway API](https://gateway-api.sigs.k8s.io/guides/getting-started/introduction/#installing-gateway-api) v1.x
 
 ## Getting Started
 
-1. Install v1 or later of the Gateway API CRDs: `kubectl apply --server-side -k github.com/kubernetes-sigs/gateway-api//config/crd?ref=v1.5.1`
-2. Install cloudflare-kubernetes-gateway: `kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/default?ref=v0.8.3` <!-- x-release-please-version -->
-3. [Find your Cloudflare account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/)
-4. [Create a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with the Account Cloudflare Tunnel Edit and Zone DNS Edit permissions
-5. Use them to create a Secret: `kubectl create secret -n cloudflare-gateway generic cloudflare --from-literal=ACCOUNT_ID=your-account-id --from-literal=TOKEN=your-token`
-6. Create a file containing your GatewayClass, then apply it with `kubectl apply -f file.yaml`:
+1. Install cloudflare-kubernetes-gateway with Kustomize:
+   <!-- x-release-please-start-version -->
+   ```sh
+   kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/default?ref=v0.8.3
+   ```
+   <!-- x-release-please-end -->
+2. [Create a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with these permissions:
+   - For User Tokens, **Account > Cloudflare Tunnel > Edit** and **Zone > DNS > Edit**
+   - For Account Tokens, **Cloudflare One / Zero Trust > Argo Tunnel (Legacy) > Edit** and **DNS & Zones > DNS View > Edit**
+3. Create a Secret with your Cloudflare [Account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) and API token:
+   <details>
+   <summary>Secret manifest</summary>
 
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: GatewayClass
-metadata:
-  name: cloudflare
-spec:
-  controllerName: github.com/pl4nty/cloudflare-kubernetes-gateway
-  parametersRef:
-    group: ""
-    kind: Secret
-    namespace: cloudflare-gateway
-    name: cloudflare
-```
+   ```yaml
+   # kubectl create secret generic -n cloudflare-gateway cloudflare-gateway-token --from-literal=ACCOUNT_ID=<account-id> --from-literal=TOKEN=<api-token>
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: cloudflare-gateway-token
+     namespace: cloudflare-gateway
+   type: Opaque
+   data:
+     ACCOUNT_ID: <account-id>
+     TOKEN: <api-token>
+   ```
 
-7. [Create a Gateway and HTTPRoute(s)](https://gateway-api.sigs.k8s.io/guides/http-routing/) to start managing traffic! For example:
+   </details>
+4. Create a GatewayClass for this controller, referencing the Secret:
+   <details>
+   <summary>GatewayClass manifest</summary>
 
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: gateway
-  namespace: cloudflare-gateway
-spec:
-  gatewayClassName: cloudflare
-  listeners:
-  - protocol: HTTP
-    port: 80
-    name: http
-```
+   ```yaml
+   # kubectl apply -f
+   apiVersion: gateway.networking.k8s.io/v1
+   kind: GatewayClass
+   metadata:
+     name: cloudflare
+   spec:
+     controllerName: github.com/pl4nty/cloudflare-kubernetes-gateway
+     parametersRef:
+       group: ""
+       kind: Secret
+       namespace: cloudflare-gateway
+       name: cloudflare-gateway-token
+   ```
 
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: example-route
-  namespace: default
-spec:
-  parentRefs:
-  - name: gateway
-    namespace: cloudflare-gateway
-  hostnames:
-  - example.com
-  rules:
-  - backendRefs:
-    - name: example-service
-      port: 80
-```
+   </details>
+5. Create a Gateway from the GatewayClass; each Gateway corresponds to a Cloudflare Tunnel.
+   In most cases you should only need one per cluster.
+   <details>
+   <summary>Gateway manifest</summary>
 
-8. (optional) Install Prometheus ServiceMonitors to collect controller and cloudflared metrics: `kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/prometheus?ref=v0.8.3` <!-- x-release-please-version -->
+   ```yaml
+   apiVersion: gateway.networking.k8s.io/v1
+   kind: Gateway
+   metadata:
+     name: gateway
+     namespace: cloudflare-gateway
+   spec:
+     gatewayClassName: cloudflare
+     # listeners are not used but need to be present
+     listeners:
+     - name: http
+       protocol: HTTP
+       port: 80
+   ```
+   </details>
+6. Manage traffic with [HTTPRoutes](https://gateway-api.sigs.k8s.io/guides/http-routing/).
+   <details>
+   <summary>HTTPRoute example manifest</summary>
+
+   ```yaml
+   apiVersion: gateway.networking.k8s.io/v1
+   kind: HTTPRoute
+   metadata:
+     name: example-route
+     namespace: default
+   spec:
+     parentRefs:
+     - name: gateway
+       namespace: cloudflare-gateway
+     hostnames:
+     - example.com
+     rules:
+     - backendRefs:
+       - name: example-service
+         port: 80
+   ```
+
+   </details>
+7. (optional) Install Prometheus ServiceMonitors to collect controller and cloudflared metrics:
+   <!-- x-release-please-start-version -->
+   ```sh
+   kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/prometheus?ref=v0.8.3
+   ```
+   <!-- x-release-please-end -->
 
 ## Features
 
@@ -88,24 +132,43 @@ By default, a [Cloudflare Tunnel client](https://github.com/cloudflare/cloudflar
 Additional clients can be deployed ([guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/deployment-guides/)) to customise parameters like replicas or tolerations, and traffic will be load-balanced between them and the built-in client.
 To disable the built-in Deployment and only use standalone clients:
 
-1. Create a ConfigMap: `kubectl create configmap -n cloudflare-gateway gateway --from-literal=disableDeployment=true`
-2. Reference it from the gateway:
+1. Create a ConfigMap with `disableDeployment=true`:
+   <details>
+   <summary>ConfigMap manifest</summary>
 
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: gateway
-  namespace: cloudflare-gateway
-spec:
-  gatewayClassName: cloudflare
-  listeners:
-  - protocol: HTTP
-    port: 80
-    name: http
-  infrastructure:
-    parametersRef:
-      group: ""
-      kind: ConfigMap
-      name: gateway
-```
+   ```yaml
+   # kubectl create configmap -n cloudflare-gateway gateway --from-literal=disableDeployment=true
+   apiVersion: v1
+   kind: ConfigMap
+   metadata:
+     name: gateway
+     namespace: cloudflare-gateway
+   data:
+     disableDeployment: "true" # string!!
+   ```
+
+   </details>
+2. Reference it from the Gateway:
+   <details>
+   <summary>Gateway manifest</summary>
+
+   ```yaml
+   apiVersion: gateway.networking.k8s.io/v1
+   kind: Gateway
+   metadata:
+     name: gateway
+     namespace: cloudflare-gateway
+   spec:
+     gatewayClassName: cloudflare
+     listeners:
+     - name: http
+       protocol: HTTP
+       port: 80
+     infrastructure:
+       parametersRef:
+         group: ""
+         kind: ConfigMap
+         name: gateway
+   ```
+
+   </details>
