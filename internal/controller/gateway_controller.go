@@ -597,10 +597,11 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 }
 
 // deploymentForGateway returns a Gateway Deployment object
+// deploys cloudflared
 func (r *GatewayReconciler) deploymentForGateway(
 	gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
 	ls := labelsForGateway(gateway.Name)
-	replicas := int32(1)
+	replicas := int32(2)
 
 	// Get the Operand image
 	image, err := imageForGateway()
@@ -677,6 +678,19 @@ func (r *GatewayReconciler) deploymentForGateway(
 							},
 						},
 						Args: []string{"tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run", "--token", token},
+						LivenessProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/ready",
+									Port: intstr.IntOrString{IntVal: 2000},
+								},
+							},
+							// CF recommended probe params
+							// https://developers.cloudflare.com/tunnel/deployment-guides/kubernetes/#5-create-pods-for-cloudflared
+							FailureThreshold: 1,
+							InitialDelaySeconds: 10,
+							PeriodSeconds: 10,
+						},
 					}},
 				},
 			},
