@@ -38,7 +38,7 @@ type routeParentGateway struct {
 
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=list
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes/status,verbs=update
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
 
@@ -61,12 +61,12 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if targetFound {
 		for _, parentRef := range target.Spec.ParentRefs {
 			if err := validateHTTPRouteGatewayParentRef(parentRef); err != nil {
-				log.Error(err, "HTTPRoute parentRef validation failed", "parentRef", parentRef)
+				logger.Info("HTTPRoute parentRef validation failed", "parentRef", parentRef, "error", err)
 				result, statusErr := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, parentRef, metav1.ConditionFalse, gatewayv1.RouteReasonNoMatchingParent, fmt.Sprintf("ParentRef validation failed: %v", err))
 				if statusErr != nil || result.Requeue || result.RequeueAfter != 0 {
 					return result, statusErr
 				}
-				return ctrl.Result{}, err
+				return ctrl.Result{}, nil
 			}
 
 			namespace := target.Namespace
@@ -74,12 +74,13 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				namespace = string(*parentRef.Namespace)
 			}
 			gateway := &gatewayv1.Gateway{}
-			if err := r.Get(ctx, types.NamespacedName{
+			gatewayRef := types.NamespacedName{
 				Namespace: namespace,
 				Name:      string(parentRef.Name),
-			}, gateway); err != nil {
-				log.Error(err, "Failed to get Gateway")
-				result, statusErr := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, parentRef, metav1.ConditionFalse, gatewayv1.RouteReasonNoMatchingParent, fmt.Sprintf("ParentRef validation failed: %v", err))
+			}
+			if err := r.Get(ctx, gatewayRef, gateway); err != nil {
+				logger.Error(err, "Failed to get Gateway")
+				result, statusErr := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, parentRef, metav1.ConditionFalse, gatewayv1.RouteReasonNoMatchingParent, fmt.Sprintf("No matching parent Gateway %s: %v", gatewayRef.String(), err))
 				if statusErr != nil || result.Requeue || result.RequeueAfter != 0 {
 					return result, statusErr
 				}
@@ -92,7 +93,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		hostnames = target.Spec.Hostnames
 	} else {
 		if !apierrors.IsNotFound(err) {
-			log.Error(err, "Failed to get HTTPRoute")
+			logger.Error(err, "Failed to get HTTPRoute")
 			return ctrl.Result{}, err
 		}
 
@@ -126,13 +127,6 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		if gatewayClass.Spec.ControllerName != controllerName {
 			continue
-		}
-
-		if targetFound && parentGateway.parentRef != nil {
-			result, err := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, *parentGateway.parentRef, metav1.ConditionTrue, gatewayv1.RouteReasonAccepted, "HTTPRoute accepted by controller")
-			if err != nil || result.Requeue || result.RequeueAfter != 0 {
-				return result, err
-			}
 		}
 
 		// search for sibling routes
@@ -232,13 +226,6 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
-		if targetFound && parentGateway.parentRef != nil {
-			result, err := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, *parentGateway.parentRef, metav1.ConditionUnknown, gatewayv1.RouteReasonPending, "Reconciling with Cloudflare API")
-			if err != nil || result.Requeue || result.RequeueAfter != 0 {
-				return result, err
-			}
-		}
-
 		account, api, err := InitCloudflareAPI(ctx, r.Client, string(gateway.Spec.GatewayClassName))
 		if err != nil {
 			logger.Error(err, "Failed to initialize Cloudflare API")
@@ -322,7 +309,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				}
 			}
 		}
-		log.Info("Updated DNS records", "hostnames", hostnames)
+		logger.Info("Updated DNS records", "hostnames", hostnames)
 
 		if targetFound && parentGateway.parentRef != nil {
 			result, err := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, *parentGateway.parentRef, metav1.ConditionTrue, gatewayv1.RouteReasonAccepted, "Successfully reconciled with Cloudflare")
@@ -377,59 +364,103 @@ func validateHTTPRouteGatewayParentRef(parentRef gatewayv1.ParentReference) erro
 }
 
 func (r *HTTPRouteReconciler) updateHTTPRouteAcceptedStatus(ctx context.Context, routeRef types.NamespacedName, parentRef gatewayv1.ParentReference, status metav1.ConditionStatus, reason gatewayv1.RouteConditionReason, message string) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	route := &gatewayv1.HTTPRoute{}
 	if err := r.Get(ctx, routeRef, route); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("HTTPRoute resource not found. Ignoring status update")
+			logger.Info("HTTPRoute resource not found. Ignoring status update")
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "Failed to re-fetch HTTPRoute")
+		logger.Error(err, "Failed to re-fetch HTTPRoute")
 		return ctrl.Result{}, err
 	}
 
-	setHTTPRouteParentStatusCondition(route, parentRef, metav1.Condition{
+	if !setHTTPRouteParentStatusCondition(route, parentRef, metav1.Condition{
 		Type:               string(gatewayv1.RouteConditionAccepted),
 		Status:             status,
 		Reason:             string(reason),
 		ObservedGeneration: route.Generation,
 		Message:            message,
-	})
+	}) {
+		return ctrl.Result{}, nil
+	}
 
 	if err := r.Status().Update(ctx, route); err != nil {
-		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-			log.Info("Conflict when updating HTTPRoute status, retrying")
+		if apierrors.IsConflict(err) {
+			logger.Info("Conflict when updating HTTPRoute status, retrying")
 			return ctrl.Result{Requeue: true}, nil
 		}
-		log.Error(err, "Failed to update HTTPRoute status")
+		logger.Error(err, "Failed to update HTTPRoute status")
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func setHTTPRouteParentStatusCondition(route *gatewayv1.HTTPRoute, parentRef gatewayv1.ParentReference, condition metav1.Condition) {
+func setHTTPRouteParentStatusCondition(route *gatewayv1.HTTPRoute, parentRef gatewayv1.ParentReference, condition metav1.Condition) bool {
+	normalizedParentRef := normalizeHTTPRouteParentRef(parentRef, route.Namespace)
+
 	for i := range route.Status.Parents {
 		parentStatus := &route.Status.Parents[i]
-		if parentStatus.ControllerName == gatewayv1.GatewayController(controllerName) && parentRefsEqual(parentStatus.ParentRef, parentRef) {
+		if parentStatus.ControllerName == gatewayv1.GatewayController(controllerName) && parentRefsEqual(normalizeHTTPRouteParentRef(parentStatus.ParentRef, route.Namespace), normalizedParentRef) {
+			parentRefChanged := !parentRefsExactlyEqual(parentStatus.ParentRef, normalizedParentRef)
+			parentStatus.ParentRef = normalizedParentRef
+			if !parentRefChanged && statusConditionMatches(meta.FindStatusCondition(parentStatus.Conditions, condition.Type), condition) {
+				return false
+			}
 			meta.SetStatusCondition(&parentStatus.Conditions, condition)
-			return
+			return true
 		}
 	}
 
 	parentStatus := gatewayv1.RouteParentStatus{
-		ParentRef:      parentRef,
+		ParentRef:      normalizedParentRef,
 		ControllerName: gatewayv1.GatewayController(controllerName),
 		Conditions:     []metav1.Condition{},
 	}
 	meta.SetStatusCondition(&parentStatus.Conditions, condition)
 	route.Status.Parents = append(route.Status.Parents, parentStatus)
+	return true
+}
+
+func normalizeHTTPRouteParentRef(parentRef gatewayv1.ParentReference, defaultNamespace string) gatewayv1.ParentReference {
+	if parentRef.Group == nil {
+		group := gatewayv1.Group("gateway.networking.k8s.io")
+		parentRef.Group = &group
+	}
+	if parentRef.Kind == nil {
+		kind := gatewayv1.Kind("Gateway")
+		parentRef.Kind = &kind
+	}
+	if parentRef.Namespace == nil && defaultNamespace != "" {
+		namespace := gatewayv1.Namespace(defaultNamespace)
+		parentRef.Namespace = &namespace
+	}
+	return parentRef
+}
+
+func statusConditionMatches(existing *metav1.Condition, condition metav1.Condition) bool {
+	return existing != nil &&
+		existing.Type == condition.Type &&
+		existing.Status == condition.Status &&
+		existing.Reason == condition.Reason &&
+		existing.ObservedGeneration == condition.ObservedGeneration &&
+		existing.Message == condition.Message
 }
 
 func parentRefsEqual(left, right gatewayv1.ParentReference) bool {
 	return parentRefGroup(left) == parentRefGroup(right) &&
 		parentRefKind(left) == parentRefKind(right) &&
+		namespacePtrEqual(left.Namespace, right.Namespace) &&
+		left.Name == right.Name &&
+		sectionNamePtrEqual(left.SectionName, right.SectionName) &&
+		portNumberPtrEqual(left.Port, right.Port)
+}
+
+func parentRefsExactlyEqual(left, right gatewayv1.ParentReference) bool {
+	return groupPtrEqual(left.Group, right.Group) &&
+		kindPtrEqual(left.Kind, right.Kind) &&
 		namespacePtrEqual(left.Namespace, right.Namespace) &&
 		left.Name == right.Name &&
 		sectionNamePtrEqual(left.SectionName, right.SectionName) &&
@@ -448,6 +479,20 @@ func parentRefKind(parentRef gatewayv1.ParentReference) string {
 		return "Gateway"
 	}
 	return string(*parentRef.Kind)
+}
+
+func groupPtrEqual(left, right *gatewayv1.Group) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
+}
+
+func kindPtrEqual(left, right *gatewayv1.Kind) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
 }
 
 func namespacePtrEqual(left, right *gatewayv1.Namespace) bool {
