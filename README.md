@@ -16,7 +16,7 @@ Manage Kubernetes ingress traffic with [Cloudflare Tunnels](https://developers.c
    <!-- x-release-please-end -->
 2. [Create a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with these permissions:
    - For User Tokens, **Account > Cloudflare Tunnel > Edit** and **Zone > DNS > Edit**
-   - For Account Tokens, **Cloudflare One / Zero Trust > Argo Tunnel (Legacy) > Edit** and **DNS & Zones > DNS View > Edit**
+   - For Account Tokens, **Entire Account > Cloudflare One / Zero Trust > Argo Tunnel (Legacy) > Edit** and **All Domains > DNS & Zones > DNS > Edit**
 3. Create a Secret with your Cloudflare [Account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) and API token:
    <details>
    <summary>Secret manifest</summary>
