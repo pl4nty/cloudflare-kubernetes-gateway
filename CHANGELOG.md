@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.9.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.8.3...v0.9.0) (2026-06-10)
+
+
+### Features
+
+* add health probes to cloudflared ([#292](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/292)) ([26ce0cb](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/26ce0cb9714451b3f815aec5c5c040ae6a083937)), closes [#180](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/180)
+
+
+### Bug Fixes
+
+* allow Account API tokens ([#289](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/289)) ([5d8ebfd](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5d8ebfd7771b995d216414f6d4a8e3cba24ecb81)), closes [#262](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/262)
+* **deps:** update module github.com/cloudflare/cloudflare-go to v7 ([#288](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/288)) ([92f6729](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/92f672918011d6ad410f70a427fb0466dd2714d4))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.24.1 ([#273](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/273)) ([debc408](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/debc408e0b21f08db656263cfc155b2982de6747))
+* migrate Event Recorder API ([#287](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/287)) ([9e11809](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/9e118096758d217347cc8049a40c8c83326f80fa)), closes [#264](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/264)
+
 ## [0.8.3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.8.2...v0.8.3) (2026-06-02)
 
 
