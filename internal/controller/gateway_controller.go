@@ -686,14 +686,14 @@ func (r *GatewayReconciler) deploymentForGateway(
 						},
 						Args: []string{"tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run", "--token", token},
 						LivenessProbe: &corev1.Probe{
-							ProbeHandler: readyProbe,
+							ProbeHandler:     readyProbe,
 							FailureThreshold: 3,
-							PeriodSeconds: 10,
+							PeriodSeconds:    10,
 						},
 						StartupProbe: &corev1.Probe{
-							ProbeHandler: readyProbe,
+							ProbeHandler:     readyProbe,
 							FailureThreshold: 10,
-							PeriodSeconds: 5,
+							PeriodSeconds:    5,
 						},
 					}},
 				},
