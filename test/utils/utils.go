@@ -87,7 +87,7 @@ func InstallCertManager() error {
 	return err
 }
 
-// LoadImageToKindCluster loads a local docker image to the kind cluster
+// LoadImageToKindClusterWithName loads a local docker image to the kind cluster
 func LoadImageToKindClusterWithName(name string) error {
 	cluster := "kind"
 	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
@@ -119,7 +119,7 @@ func GetProjectDir() (string, error) {
 	if err != nil {
 		return wd, err
 	}
-	wd = strings.Replace(wd, "/test/e2e", "", -1)
+	wd = strings.ReplaceAll(wd, "/test/e2e", "")
 	return wd, nil
 }
 
