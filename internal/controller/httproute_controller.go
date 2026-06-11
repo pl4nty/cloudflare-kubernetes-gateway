@@ -147,7 +147,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						namespace = string(*backend.Namespace)
 					}
 
-					services[fmt.Sprintf("http://%s.%s:%d", string(backend.Name), namespace, int32(*backend.Port))] = true
+					services[fmt.Sprintf("http://%s.%s:%d", backend.Name, namespace, backend.Port)] = true
 				}
 
 				// product of hostname, path, service
