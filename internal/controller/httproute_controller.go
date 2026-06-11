@@ -123,20 +123,20 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 
 					if match.Headers != nil {
-						logger.Info("HTTPRoute header match is not supported", match.Headers)
+						logger.Info("HTTPRoute header match is not supported", "HTTPRouteMatch.Headers", match.Headers)
 					}
 				}
 
 				// TODO implement this with rewrite rules? Core filters are a MUST in the spec
 				if rule.Filters != nil {
-					logger.Info("HTTPRoute filters are not supported", rule.Filters)
+					logger.Info("HTTPRoute filters are not supported", "HTTPRouteFilter", rule.Filters)
 				}
 
 				services := map[string]bool{}
 				for _, backend := range rule.BackendRefs {
 					if backend.Port == nil {
 						err := errors.New("HTTPRoute backend port is nil")
-						logger.Error(err, "HTTPRoute backend port is required and nil", backend)
+						logger.Error(err, "HTTPRoute backend port is required and nil", "backend", backend)
 						continue
 					}
 
@@ -255,7 +255,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					},
 				})
 				if err != nil {
-					logger.Error(err, "Failed to create DNS record", hostname, content)
+					logger.Error(err, "Failed to create DNS record", "hostname", hostname, "content", content)
 					return ctrl.Result{}, err
 				}
 			} else {
@@ -270,7 +270,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					},
 				})
 				if err != nil {
-					logger.Error(err, "Failed to update DNS record", hostname, content)
+					logger.Error(err, "Failed to update DNS record", "hostname", hostname, "content", content)
 					return ctrl.Result{}, err
 				}
 			}
