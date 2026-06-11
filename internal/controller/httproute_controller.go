@@ -41,7 +41,7 @@ type HTTPRouteReconciler struct {
 //
 //nolint:gocyclo
 func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// TODO delete DNS records. load all hostnames via tunnel ID in comment? but can't get DNS zone...
 	target := &gatewayv1.HTTPRoute{}
@@ -59,7 +59,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				Namespace: namespace,
 				Name:      string(parentRef.Name),
 			}, gateway); err != nil {
-				log.Error(err, "Failed to get Gateway")
+				logger.Error(err, "Failed to get Gateway")
 				return ctrl.Result{}, err
 			}
 			gateways = append(gateways, *gateway)
@@ -69,7 +69,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	} else {
 		gatewayList := &gatewayv1.GatewayList{}
 		if err := r.List(ctx, gatewayList); err != nil {
-			log.Error(err, "Failed to list Gateways")
+			logger.Error(err, "Failed to list Gateways")
 			return ctrl.Result{}, err
 		}
 		gateways = gatewayList.Items
@@ -77,7 +77,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	routes := &gatewayv1.HTTPRouteList{}
 	if err := r.List(ctx, routes); err != nil {
-		log.Error(err, "Failed to list HTTPRoutes")
+		logger.Error(err, "Failed to list HTTPRoutes")
 		return ctrl.Result{}, err
 	}
 
@@ -87,7 +87,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.Get(ctx, types.NamespacedName{
 			Name: string(gateway.Spec.GatewayClassName),
 		}, gatewayClass); err != nil {
-			log.Error(err, "Failed to get GatewayClasses")
+			logger.Error(err, "Failed to get GatewayClasses")
 			return ctrl.Result{}, err
 		}
 
@@ -123,20 +123,20 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 
 					if match.Headers != nil {
-						log.Info("HTTPRoute header match is not supported", match.Headers)
+						logger.Info("HTTPRoute header match is not supported", "HTTPRouteMatch.Headers", match.Headers)
 					}
 				}
 
 				// TODO implement this with rewrite rules? Core filters are a MUST in the spec
 				if rule.Filters != nil {
-					log.Info("HTTPRoute filters are not supported", rule.Filters)
+					logger.Info("HTTPRoute filters are not supported", "HTTPRouteFilter", rule.Filters)
 				}
 
 				services := map[string]bool{}
 				for _, backend := range rule.BackendRefs {
 					if backend.Port == nil {
 						err := errors.New("HTTPRoute backend port is nil")
-						log.Error(err, "HTTPRoute backend port is required and nil", backend)
+						logger.Error(err, "HTTPRoute backend port is required and nil", "backend", backend)
 						continue
 					}
 
@@ -147,7 +147,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						namespace = string(*backend.Namespace)
 					}
 
-					services[fmt.Sprintf("http://%s.%s:%d", string(backend.Name), namespace, int32(*backend.Port))] = true
+					services[fmt.Sprintf("http://%s.%s:%d", backend.Name, namespace, backend.Port)] = true
 				}
 
 				// product of hostname, path, service
@@ -177,7 +177,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Name:      gateway.Name,
 		}
 		if err := r.Get(ctx, gatewayRef, gatewayObj); err != nil {
-			log.Error(err, "Failed to re-fetch gateway")
+			logger.Error(err, "Failed to re-fetch gateway")
 			return ctrl.Result{}, err
 		}
 		listeners := []gatewayv1.ListenerStatus{}
@@ -185,16 +185,16 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			listener.AttachedRoutes = int32(len(ingress))
 			listeners = append(listeners, listener)
 		}
-		log.Info("Updating Gateway listeners", "AttachedRoutes", len(ingress))
+		logger.Info("Updating Gateway listeners", "AttachedRoutes", len(ingress))
 		gatewayObj.Status.Listeners = listeners
 		if err := r.Status().Update(ctx, gatewayObj); err != nil {
-			log.Error(err, "Failed to update Gateway status")
+			logger.Error(err, "Failed to update Gateway status")
 			return ctrl.Result{}, err
 		}
 
 		account, api, err := InitCloudflareAPI(ctx, r.Client, string(gateway.Spec.GatewayClassName))
 		if err != nil {
-			log.Error(err, "Failed to initialize Cloudflare API")
+			logger.Error(err, "Failed to initialize Cloudflare API")
 			return ctrl.Result{}, err
 		}
 
@@ -204,11 +204,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Name:      cloudflare.String(gateway.Name),
 		})
 		if err != nil {
-			log.Error(err, "Failed to get tunnel from Cloudflare API")
+			logger.Error(err, "Failed to get tunnel from Cloudflare API")
 			return ctrl.Result{}, err
 		}
 		if len(tunnels.Result) == 0 {
-			log.Info("Tunnel doesn't exist yet, probably waiting for the Gateway controller. Retrying in 1 minute", "gateway", gateway.Name)
+			logger.Info("Tunnel doesn't exist yet, probably waiting for the Gateway controller. Retrying in 1 minute", "gateway", gateway.Name)
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 		tunnel := tunnels.Result[0]
@@ -221,11 +221,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			),
 		})
 		if err != nil {
-			log.Error(err, "Failed to update Tunnel configuration")
+			logger.Error(err, "Failed to update Tunnel configuration")
 			return ctrl.Result{}, err
 		}
 
-		log.Info("Updated Tunnel configuration", "ingress", ingress)
+		logger.Info("Updated Tunnel configuration", "ingress", ingress)
 
 		// duplicate CNAMEs can't exist, so the last parentRef wins
 		for _, gwHostname := range hostnames {
@@ -255,7 +255,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					},
 				})
 				if err != nil {
-					log.Error(err, "Failed to create DNS record", hostname, content)
+					logger.Error(err, "Failed to create DNS record", "hostname", hostname, "content", content)
 					return ctrl.Result{}, err
 				}
 			} else {
@@ -270,12 +270,12 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					},
 				})
 				if err != nil {
-					log.Error(err, "Failed to update DNS record", hostname, content)
+					logger.Error(err, "Failed to update DNS record", "hostname", hostname, "content", content)
 					return ctrl.Result{}, err
 				}
 			}
 		}
-		log.Info("Updated DNS records", "hostnames", hostnames)
+		logger.Info("Updated DNS records", "hostnames", hostnames)
 	}
 
 	return ctrl.Result{}, nil
@@ -291,23 +291,23 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func FindZoneID(hostname string, ctx context.Context, api *cloudflare.Client, accountID string) (string, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 	for parts := range len(strings.Split(hostname, ".")) {
 		zoneName := strings.Join(strings.Split(hostname, ".")[parts:], ".")
-		zones, err := api.Zones.List(ctx, zones.ZoneListParams{
+		zoneList, err := api.Zones.List(ctx, zones.ZoneListParams{
 			Account: cloudflare.F(zones.ZoneListParamsAccount{ID: cloudflare.String(accountID)}),
 			Name:    cloudflare.String(zoneName),
 			Status:  cloudflare.F(zones.ZoneListParamsStatusActive),
 		})
 		if err != nil {
-			log.Error(err, "Failed to list DNS zones")
+			logger.Error(err, "Failed to list DNS zones")
 			return "", err
 		}
-		if len(zones.Result) != 0 {
-			return zones.Result[0].ID, nil
+		if len(zoneList.Result) != 0 {
+			return zoneList.Result[0].ID, nil
 		}
 	}
 	err := errors.New("failed to discover DNS zone")
-	log.Error(err, "Failed to discover parent DNS zone. Ensure Zone.DNS permission is configured", "hostname", hostname)
+	logger.Error(err, "Failed to discover parent DNS zone. Ensure Zone.DNS permission is configured", "hostname", hostname)
 	return "", err
 }

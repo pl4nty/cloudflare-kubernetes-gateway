@@ -18,11 +18,11 @@ import (
 )
 
 func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName string) (string, *cloudflare.Client, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	gatewayClass := &gw.GatewayClass{}
 	if err := c.Get(ctx, types.NamespacedName{Name: gatewayClassName}, gatewayClass); err != nil {
-		log.Error(err, "Failed to get gatewayclass")
+		logger.Error(err, "Failed to get gatewayclass")
 		return "", nil, err
 	}
 	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {
@@ -39,7 +39,7 @@ func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName st
 	}
 	secret := &core.Secret{}
 	if err := c.Get(ctx, secretRef, secret); err != nil {
-		log.Error(err, "unable to fetch Secret from GatewayClass ParameterRef")
+		logger.Error(err, "unable to fetch Secret from GatewayClass ParameterRef")
 		return "", nil, err
 	}
 

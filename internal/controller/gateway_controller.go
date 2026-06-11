@@ -68,7 +68,7 @@ type GatewayReconciler struct {
 //
 //nolint:gocyclo
 func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// Fetch the Gateway instance
 	// The purpose is check if the Custom Resource for the Kind Gateway
@@ -78,11 +78,11 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if apierrors.IsNotFound(err) {
 			// If the custom resource is not found then it usually means that it was deleted or not created
 			// In this way, we will stop the reconciliation
-			log.Info("gateway resource not found. Ignoring since object must be deleted")
+			logger.Info("gateway resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get gateway")
+		logger.Error(err, "Failed to get gateway")
 		return ctrl.Result{}, err
 	}
 
@@ -92,26 +92,26 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if apierrors.IsNotFound(err) {
 			// If the custom resource is not found then it usually means that it was deleted or not created
 			// In this way, we will stop the reconciliation
-			log.Info("gatewayclass resource not found. Ignoring since object must be deleted")
+			logger.Info("gatewayclass resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get gatewayclass")
+		logger.Error(err, "Failed to get gatewayclass")
 		return ctrl.Result{}, err
 	}
 	if gatewayClass.Spec.ControllerName != controllerName {
-		log.Info("Ignoring gateway with non-matching GatewayClass")
+		logger.Info("Ignoring gateway with non-matching GatewayClass")
 		return ctrl.Result{}, nil
 	}
 	if !controllerutil.ContainsFinalizer(gatewayClass, gatewayClassFinalizer) {
-		log.Info("Adding Finalizer for GatewayClass")
+		logger.Info("Adding Finalizer for GatewayClass")
 		if ok := controllerutil.AddFinalizer(gatewayClass, gatewayClassFinalizer); !ok {
-			log.Error(nil, "Failed to add finalizer into the GatewayClass")
+			logger.Error(nil, "Failed to add finalizer into the GatewayClass")
 			return ctrl.Result{Requeue: true}, nil
 		}
 
 		if err := r.Update(ctx, gatewayClass); err != nil {
-			log.Error(err, "Failed to update GatewayClass to add finalizer")
+			logger.Error(err, "Failed to update GatewayClass to add finalizer")
 			return ctrl.Result{}, err
 		}
 	}
@@ -122,14 +122,14 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// occur before the custom resource is deleted.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers
 	if !controllerutil.ContainsFinalizer(gateway, gatewayFinalizer) {
-		log.Info("Adding Finalizer for Gateway")
+		logger.Info("Adding Finalizer for Gateway")
 		if ok := controllerutil.AddFinalizer(gateway, gatewayFinalizer); !ok {
-			log.Error(nil, "Failed to add finalizer into the Gateway")
+			logger.Error(nil, "Failed to add finalizer into the Gateway")
 			return ctrl.Result{Requeue: true}, nil
 		}
 
 		if err := r.Update(ctx, gateway); err != nil {
-			log.Error(err, "Failed to update Gateway to add finalizer")
+			logger.Error(err, "Failed to update Gateway to add finalizer")
 			return ctrl.Result{}, err
 		}
 	}
@@ -139,7 +139,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	isGatewayMarkedToBeDeleted := gateway.GetDeletionTimestamp() != nil
 	if isGatewayMarkedToBeDeleted {
 		if controllerutil.ContainsFinalizer(gateway, gatewayFinalizer) {
-			log.Info("Performing Finalizer Operations for Gateway before delete CR")
+			logger.Info("Performing Finalizer Operations for Gateway before delete CR")
 
 			// Let's add here a status "Downgrade" to reflect that this resource began its process to be terminated.
 			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
@@ -147,14 +147,14 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Message: fmt.Sprintf("Performing finalizer operations for the Gateway: %s ", gateway.Name)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway finalizer status")
+				logger.Error(err, "Failed to update Gateway finalizer status")
 				return ctrl.Result{}, err
 			}
 
 			// Perform all operations required before removing the finalizer and allow
 			// the Kubernetes API to remove the custom resource.
 			if err := r.doFinalizerOperationsForGateway(ctx, gatewayClass, gateway, account, api); err != nil {
-				log.Error(err, "Failed to complete finalizer operations for Gateway")
+				logger.Error(err, "Failed to complete finalizer operations for Gateway")
 				return ctrl.Result{Requeue: true}, nil
 			}
 
@@ -163,7 +163,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			// raising the error "the object has been modified, please apply
 			// your changes to the latest version and try again" which would re-trigger the reconciliation
 			if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
-				log.Error(err, "Failed to re-fetch gateway")
+				logger.Error(err, "Failed to re-fetch gateway")
 				return ctrl.Result{}, err
 			}
 
@@ -172,18 +172,18 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", gateway.Name)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway finalizer status")
+				logger.Error(err, "Failed to update Gateway finalizer status")
 				return ctrl.Result{}, err
 			}
 
-			log.Info("Removing Finalizer for Gateway after successfully perform the operations")
+			logger.Info("Removing Finalizer for Gateway after successfully perform the operations")
 			if ok := controllerutil.RemoveFinalizer(gateway, gatewayFinalizer); !ok {
-				log.Error(err, "Failed to remove finalizer for Gateway")
+				logger.Error(err, "Failed to remove finalizer for Gateway")
 				return ctrl.Result{Requeue: true}, nil
 			}
 
 			if err := r.Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to remove finalizer for Gateway")
+				logger.Error(err, "Failed to remove finalizer for Gateway")
 				return ctrl.Result{}, err
 			}
 		}
@@ -213,7 +213,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				secret := &corev1.Secret{}
 
 				if err := r.Get(ctx, secretRef, secret); err != nil {
-					log.Error(err, "unable to fetch Secret from listener CertificateRefs", "listener", listener.Name)
+					logger.Error(err, "unable to fetch Secret from listener CertificateRefs", "listener", listener.Name)
 
 					meta.SetStatusCondition(&listenerStatus.Conditions, metav1.Condition{
 						Type:               string(gatewayv1.ListenerConditionResolvedRefs),
@@ -289,7 +289,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
-		log.Error(err, "Failed to re-fetch gateway")
+		logger.Error(err, "Failed to re-fetch gateway")
 		return ctrl.Result{}, err
 	}
 	gateway.Status.Listeners = listenerStatuses
@@ -301,10 +301,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 		if err := r.Status().Update(ctx, gateway); err != nil {
 			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-				log.Info("Conflict when updating Gateway listener status, retrying")
+				logger.Info("Conflict when updating Gateway listener status, retrying")
 				return ctrl.Result{Requeue: true}, nil
 			} else {
-				log.Error(err, "Failed to update Gateway listener status")
+				logger.Error(err, "Failed to update Gateway listener status")
 				return ctrl.Result{}, err
 			}
 		}
@@ -317,10 +317,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
 		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-			log.Info("Conflict when updating Gateway listener status, retrying")
+			logger.Info("Conflict when updating Gateway listener status, retrying")
 			return ctrl.Result{Requeue: true}, nil
 		} else {
-			log.Error(err, "Failed to update Gateway listener status")
+			logger.Error(err, "Failed to update Gateway listener status")
 			return ctrl.Result{}, err
 		}
 	}
@@ -332,7 +332,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "429 Too Many Requests") {
-			log.Error(err, "Rate limited, requeueing after 10 minutes")
+			logger.Error(err, "Rate limited, requeueing after 10 minutes")
 			return ctrl.Result{
 				RequeueAfter: time.Minute * 10, // https://developers.cloudflare.com/fundamentals/api/reference/limits/
 			}, nil
@@ -343,7 +343,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	tunnelID := ""
 	if len(tunnels.Result) == 0 {
-		log.Info("Creating tunnel")
+		logger.Info("Creating tunnel")
 		// secret is required, despite optional in docs and seemingly only needed for ConfigSrc=local
 		tunnel, err := api.ZeroTrust.Tunnels.Cloudflared.New(ctx, zero_trust.TunnelCloudflaredNewParams{
 			AccountID:    cloudflare.String(account),
@@ -352,18 +352,18 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			// config_src = cloudflare
 		})
 		if err != nil {
-			log.Error(err, "Failed to create tunnel")
+			logger.Error(err, "Failed to create tunnel")
 			return ctrl.Result{}, err
 		}
 		tunnelID = tunnel.ID
 	} else {
 		// patch unsupported with api_token
 		// if tunnels[0].Name != gateway.Name {
-		// log.Info("updating Tunnel name")
+		// logger.Info("updating Tunnel name")
 		// API uses /cfd_tunnel/{id}, but SDK uses /cfd_tunnel? might be broken
 		// _, err := api.UpdateTunnel(ctx, account, cloudflare.TunnelUpdateParams{Name: gateway.Name})
 		// if err != nil {
-		// 	log.Error(err, "unable to update Tunnel")
+		// 	logger.Error(err, "unable to update Tunnel")
 		// 	return ctrl.Result{}, err
 		// }
 		// }
@@ -377,15 +377,15 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			configMap := &corev1.ConfigMap{}
 			err := r.Get(ctx, types.NamespacedName{Name: parametersRef.Name, Namespace: gateway.Namespace}, configMap)
 			if err != nil {
-				log.Error(err, "Failed to get ConfigMap referenced in parametersRef")
+				logger.Error(err, "Failed to get ConfigMap referenced in parametersRef")
 				return ctrl.Result{}, err
 			}
 
 			// Check the disableDeployment key
 			if disableDeployment, ok := configMap.Data["disableDeployment"]; ok && disableDeployment == "true" {
-				log.Info("Deployment creation and update steps are disabled for this Gateway")
+				logger.Info("Deployment creation and update steps are disabled for this Gateway")
 				if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
-					log.Error(err, "Failed to re-fetch gateway")
+					logger.Error(err, "Failed to re-fetch gateway")
 					return ctrl.Result{}, err
 				}
 
@@ -393,13 +393,13 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				found := &appsv1.Deployment{}
 				err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
 				if err == nil {
-					log.Info("Deleting existing Deployment", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+					logger.Info("Deleting existing Deployment", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
 					if err = r.Delete(ctx, found); err != nil {
-						log.Error(err, "Failed to delete existing Deployment", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+						logger.Error(err, "Failed to delete existing Deployment", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
 						return ctrl.Result{}, err
 					}
 				} else if !apierrors.IsNotFound(err) {
-					log.Error(err, "Failed to get existing Deployment", "Deployment.Namespace", gateway.Namespace, "Deployment.Name", gateway.Name)
+					logger.Error(err, "Failed to get existing Deployment", "Deployment.Namespace", gateway.Namespace, "Deployment.Name", gateway.Name)
 					return ctrl.Result{}, err
 				}
 
@@ -410,20 +410,20 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 				if err := r.Status().Update(ctx, gateway); err != nil {
 					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-						log.Info("Conflict when updating Gateway listener status, retrying")
+						logger.Info("Conflict when updating Gateway listener status, retrying")
 						return ctrl.Result{Requeue: true}, nil
 					} else {
-						log.Error(err, "Failed to update Gateway status")
+						logger.Error(err, "Failed to update Gateway status")
 						return ctrl.Result{}, err
 					}
 				}
 
 				return ctrl.Result{}, nil
 			} else {
-				log.Info("disableDeployment key is missing in ConfigMap")
+				logger.Info("disableDeployment key is missing in ConfigMap")
 			}
 		} else {
-			log.Info("parametersRef kind isn't configmap")
+			logger.Info("parametersRef kind isn't configmap")
 		}
 	}
 
@@ -431,7 +431,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		AccountID: cloudflare.String(account),
 	})
 	if err != nil {
-		log.Error(err, "Failed to get tunnel token")
+		logger.Error(err, "Failed to get tunnel token")
 		return ctrl.Result{}, err
 	}
 	token := *res
@@ -444,7 +444,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// Define a new deployment
 		dep, err := r.deploymentForGateway(gateway, token)
 		if err != nil {
-			log.Error(err, "Failed to define new Deployment resource for Gateway")
+			logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
 			// The following implementation will update the status
 			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
@@ -452,17 +452,17 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway status")
+				logger.Error(err, "Failed to update Gateway status")
 				return ctrl.Result{}, err
 			}
 
 			return ctrl.Result{}, err
 		}
 
-		log.Info("Creating a new Deployment",
+		logger.Info("Creating a new Deployment",
 			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 		if err = r.Create(ctx, dep); err != nil {
-			log.Error(err, "Failed to create new Deployment",
+			logger.Error(err, "Failed to create new Deployment",
 				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 			return ctrl.Result{}, err
 		}
@@ -472,14 +472,14 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// and move forward for the next operations
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
-		log.Error(err, "Failed to get Deployment")
+		logger.Error(err, "Failed to get Deployment")
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
 	} else {
 		// Define a new deployment
 		dep, err := r.deploymentForGateway(gateway, token)
 		if err != nil {
-			log.Error(err, "Failed to define new Deployment resource for Gateway")
+			logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
 			// The following implementation will update the status
 			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
@@ -487,7 +487,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Message: fmt.Sprintf("Failed to update Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
 
 			if err := r.Status().Update(ctx, gateway); err != nil {
-				log.Error(err, "Failed to update Gateway status")
+				logger.Error(err, "Failed to update Gateway status")
 				return ctrl.Result{}, err
 			}
 
@@ -496,17 +496,17 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 		if err := r.Update(ctx, dep); err != nil {
 			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-				log.Info("Conflict when updating Deployment, retrying")
+				logger.Info("Conflict when updating Deployment, retrying")
 				return ctrl.Result{Requeue: true}, nil
 			} else {
-				log.Error(err, "Failed to update Deployment")
+				logger.Error(err, "Failed to update Deployment")
 				return ctrl.Result{}, err
 			}
 		}
 	}
 
 	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
-		log.Error(err, "Failed to re-fetch gateway")
+		logger.Error(err, "Failed to re-fetch gateway")
 		return ctrl.Result{}, err
 	}
 
@@ -517,10 +517,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if err := r.Status().Update(ctx, gateway); err != nil {
 		if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-			log.Info("Conflict when updating Gateway listener status, retrying")
+			logger.Info("Conflict when updating Gateway listener status, retrying")
 			return ctrl.Result{Requeue: true}, nil
 		} else {
-			log.Error(err, "Failed to update Gateway status")
+			logger.Error(err, "Failed to update Gateway status")
 			return ctrl.Result{}, err
 		}
 	}
@@ -536,7 +536,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	// to set the ownerRef which means that the Deployment will be deleted by the Kubernetes API.
 	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
 
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	tunnel, err := api.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
 		AccountID: cloudflare.String(account),
@@ -544,42 +544,42 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 		Name:      cloudflare.String(gateway.Name),
 	})
 	if err != nil {
-		log.Error(err, "Failed to get tunnel from Cloudflare API")
+		logger.Error(err, "Failed to get tunnel from Cloudflare API")
 		return err
 	}
 
 	if len(tunnel.Result) > 0 {
-		log.Info("Deleting Tunnel")
+		logger.Info("Deleting Tunnel")
 
 		// prepare for deletion - disconnect, after rotating secret to prevent reconnect
 		if _, err := api.ZeroTrust.Tunnels.Cloudflared.Edit(ctx, tunnel.Result[0].ID, zero_trust.TunnelCloudflaredEditParams{
 			AccountID:    cloudflare.String(account),
 			TunnelSecret: cloudflare.String("Vm0xd1MwMUhSWGhYV0d4VlYwZG9jVlZ0TVRSV01XeHpZVWR3VUZWVU1Eaz0="),
 		}); err != nil {
-			log.Error(err, "Failed to update tunnel secret")
+			logger.Error(err, "Failed to update tunnel secret")
 			return err
 		}
 		if _, err := api.ZeroTrust.Tunnels.Cloudflared.Connections.Delete(ctx, tunnel.Result[0].ID, zero_trust.TunnelCloudflaredConnectionDeleteParams{
 			AccountID: cloudflare.String(account),
 		}); err != nil {
-			log.Error(err, "Failed to delete tunnel connections")
+			logger.Error(err, "Failed to delete tunnel connections")
 			return err
 		}
 
 		if _, err := api.ZeroTrust.Tunnels.Cloudflared.Delete(ctx, tunnel.Result[0].ID, zero_trust.TunnelCloudflaredDeleteParams{
 			AccountID: cloudflare.String(account),
 		}); err != nil {
-			log.Error(err, "Failed to delete tunnel")
+			logger.Error(err, "Failed to delete tunnel")
 			return err
 		}
 	} else {
-		log.Info("Gateway under deletion has no tunnel")
+		logger.Info("Gateway under deletion has no tunnel")
 	}
 
 	// if GatewayClass has no other Gateways, remove its finalizer
 	gateways := &gatewayv1.GatewayList{Items: []gatewayv1.Gateway{{Spec: gatewayv1.GatewaySpec{GatewayClassName: gateway.Spec.GatewayClassName}}}}
 	if err := r.List(ctx, gateways); err != nil {
-		log.Error(err, "Failed to list Gateways")
+		logger.Error(err, "Failed to list Gateways")
 		return err
 	}
 	if len(gateways.Items) == 0 {
@@ -686,14 +686,14 @@ func (r *GatewayReconciler) deploymentForGateway(
 						},
 						Args: []string{"tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run", "--token", token},
 						LivenessProbe: &corev1.Probe{
-							ProbeHandler: readyProbe,
+							ProbeHandler:     readyProbe,
 							FailureThreshold: 3,
-							PeriodSeconds: 10,
+							PeriodSeconds:    10,
 						},
 						StartupProbe: &corev1.Probe{
-							ProbeHandler: readyProbe,
+							ProbeHandler:     readyProbe,
 							FailureThreshold: 10,
-							PeriodSeconds: 5,
+							PeriodSeconds:    5,
 						},
 					}},
 				},

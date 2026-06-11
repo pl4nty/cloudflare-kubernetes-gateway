@@ -32,7 +32,7 @@ type GatewayClassReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
 func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// Fetch the GatewayClass instance
 	// The purpose is check if the Custom Resource for the Kind GatewayClass
@@ -42,17 +42,17 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if apierrors.IsNotFound(err) {
 			// If the custom resource is not found then it usually means that it was deleted or not created
 			// In this way, we will stop the reconciliation
-			log.Info("gatewayclass resource not found. Ignoring since object must be deleted")
+			logger.Info("gatewayclass resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get gatewayclass")
+		logger.Error(err, "Failed to get gatewayclass")
 		return ctrl.Result{}, err
 	}
 
 	// check if GatewayClass controllerName is ours
 	if gatewayClass.Spec.ControllerName != controllerName {
-		log.Info("Ignoring gatewayclass with non-matching controllerName")
+		logger.Info("Ignoring gatewayclass with non-matching controllerName")
 		return ctrl.Result{}, nil
 	}
 
@@ -84,7 +84,7 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	meta.SetStatusCondition(&gatewayClass.Status.Conditions, condition)
 	if err := r.Status().Update(ctx, gatewayClass); err != nil {
-		log.Error(err, "Failed to update GatewayClass status. Retrying in 1 minute")
+		logger.Error(err, "Failed to update GatewayClass status. Retrying in 1 minute")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
