@@ -344,11 +344,9 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	tunnelID := ""
 	if len(tunnels.Result) == 0 {
 		logger.Info("Creating tunnel")
-		// secret is required, despite optional in docs and seemingly only needed for ConfigSrc=local
 		tunnel, err := api.ZeroTrust.Tunnels.Cloudflared.New(ctx, zero_trust.TunnelCloudflaredNewParams{
 			AccountID:    cloudflare.String(account),
 			Name:         cloudflare.String(gateway.Name),
-			TunnelSecret: cloudflare.String("AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg="),
 			// config_src = cloudflare
 		})
 		if err != nil {
