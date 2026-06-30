@@ -54,5 +54,12 @@ rules:
   resources:
   - httproutes
   verbs:
+  - get
   - list
   - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes/status
+  verbs:
+  - update
