@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -371,7 +372,9 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Check for parametersRef in gateway specs
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
 		parametersRef := gateway.Spec.Infrastructure.ParametersRef
-		if parametersRef.Kind == "ConfigMap" {
+		if parametersRef.Kind != "ConfigMap" {
+			logger.Info("parametersRef Kind isn't ConfigMap")
+		} else {
 			configMap := &corev1.ConfigMap{}
 			err := r.Get(ctx, types.NamespacedName{Name: parametersRef.Name, Namespace: gateway.Namespace}, configMap)
 			if err != nil {
@@ -417,11 +420,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				}
 
 				return ctrl.Result{}, nil
-			} else {
-				logger.Info("disableDeployment key is missing in ConfigMap")
 			}
-		} else {
-			logger.Info("parametersRef kind isn't configmap")
 		}
 	}
 
@@ -440,7 +439,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// TODO update existing deployment eg image changes
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new deployment
-		dep, err := r.deploymentForGateway(gateway, token)
+		dep, err := r.deploymentForGateway(ctx, gateway, token)
 		if err != nil {
 			logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
@@ -475,7 +474,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	} else {
 		// Define a new deployment
-		dep, err := r.deploymentForGateway(gateway, token)
+		dep, err := r.deploymentForGateway(ctx, gateway, token)
 		if err != nil {
 			logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
@@ -596,9 +595,16 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 
 // deploymentForGateway returns a Gateway Deployment object
 // deploys cloudflared
-func (r *GatewayReconciler) deploymentForGateway(gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
+func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
+	logger := log.FromContext(ctx)
+
+	// Get the Operand image
+	image, err := imageForGateway()
+	if err != nil {
+		return nil, err
+	}
+
 	ls := labelsForGateway(gateway.Name)
-	replicas := int32(1)
 
 	readyProbe := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
@@ -607,10 +613,39 @@ func (r *GatewayReconciler) deploymentForGateway(gateway *gatewayv1.Gateway, tok
 		},
 	}
 
-	// Get the Operand image
-	image, err := imageForGateway()
-	if err != nil {
-		return nil, err
+	// Defaults
+	replicas := int32(1)
+	containerResources := corev1.ResourceRequirements{}
+	// Apply custom config
+	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
+		parametersRef := gateway.Spec.Infrastructure.ParametersRef
+		if parametersRef.Kind != "ConfigMap" {
+			logger.Info("infrastructure.parametersRef Kind isn't ConfigMap")
+		} else {
+			configMap := &corev1.ConfigMap{}
+			err := r.Get(ctx, types.NamespacedName{Name: parametersRef.Name, Namespace: gateway.Namespace}, configMap)
+			if err != nil {
+				logger.Error(err, "Failed to get ConfigMap referenced in infrastructure.parametersRef")
+			} else {
+				// Update replicas
+				if s, ok := configMap.Data["replicas"]; ok {
+					i, err := strconv.Atoi(s)
+					if err != nil {
+						logger.Error(err, "Failed to parse replicas field in infrastructure parameters")
+					} else {
+						replicas = int32(i)
+					}
+				}
+
+				// Add custom container resource requirements
+				if s, ok := configMap.Data["resources"]; ok {
+					err := containerResources.Unmarshal([]byte(s))
+					if err != nil {
+						logger.Error(err, "Failed to parse resources field in infrastructure parameters")
+					}
+				}
+			}
+		}
 	}
 
 	dep := &appsv1.Deployment{
@@ -687,6 +722,7 @@ func (r *GatewayReconciler) deploymentForGateway(gateway *gatewayv1.Gateway, tok
 							{Name: "TUNNEL_METRICS", Value: "0.0.0.0:2000"},
 							{Name: "TUNNEL_TOKEN", Value: token},
 						},
+						Resources: containerResources,
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler:     readyProbe,
 							FailureThreshold: 3,
