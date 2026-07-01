@@ -629,7 +629,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 			} else {
 				// Update replicas
 				if s, ok := configMap.Data["replicas"]; ok {
-					i, err := strconv.Atoi(s)
+					i, err := strconv.ParseInt(s, 10, 32)
 					if err != nil {
 						logger.Error(err, "Failed to parse replicas field in infrastructure parameters")
 					} else {
