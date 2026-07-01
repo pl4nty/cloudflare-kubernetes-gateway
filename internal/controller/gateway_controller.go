@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"dario.cat/mergo"
+
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/zero_trust"
 
@@ -615,6 +617,28 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 
 	// Defaults
 	replicas := int32(1)
+	affinity := &corev1.Affinity{
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: []corev1.NodeSelectorRequirement{
+							{
+								Key:      "kubernetes.io/arch",
+								Operator: "In",
+								Values:   []string{"amd64", "arm64"},
+							},
+							{
+								Key:      "kubernetes.io/os",
+								Operator: "In",
+								Values:   []string{"linux"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 	containerResources := corev1.ResourceRequirements{}
 	// Apply custom config
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
@@ -634,6 +658,20 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 						logger.Error(err, "Failed to parse replicas field in infrastructure parameters")
 					} else {
 						replicas = int32(i)
+					}
+				}
+
+				// Add custom nodeAffinity
+				if s, ok := configMap.Data["affinity"]; ok {
+					var customAffinity corev1.Affinity
+					err := customAffinity.Unmarshal([]byte(s))
+					if err != nil {
+						logger.Error(err, "Failed to parse affinity field in infrastructure parameters")
+					} else {
+						err := mergo.Merge(affinity, customAffinity, mergo.WithOverride)
+						if err != nil {
+							logger.Error(err, "Failed to merge custom Deployment affinity and defaults")
+						}
 					}
 				}
 
@@ -663,28 +701,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 					Labels: ls,
 				},
 				Spec: corev1.PodSpec{
-					Affinity: &corev1.Affinity{
-						NodeAffinity: &corev1.NodeAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-								NodeSelectorTerms: []corev1.NodeSelectorTerm{
-									{
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "kubernetes.io/arch",
-												Operator: "In",
-												Values:   []string{"amd64", "arm64"},
-											},
-											{
-												Key:      "kubernetes.io/os",
-												Operator: "In",
-												Values:   []string{"linux"},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					Affinity: affinity,
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: &[]bool{true}[0],
 						// IMPORTANT: seccomProfile was introduced with Kubernetes 1.19
