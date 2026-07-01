@@ -345,8 +345,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if len(tunnels.Result) == 0 {
 		logger.Info("Creating tunnel")
 		tunnel, err := api.ZeroTrust.Tunnels.Cloudflared.New(ctx, zero_trust.TunnelCloudflaredNewParams{
-			AccountID:    cloudflare.String(account),
-			Name:         cloudflare.String(gateway.Name),
+			AccountID: cloudflare.String(account),
+			Name:      cloudflare.String(gateway.Name),
 			// config_src = cloudflare
 		})
 		if err != nil {
@@ -596,8 +596,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 
 // deploymentForGateway returns a Gateway Deployment object
 // deploys cloudflared
-func (r *GatewayReconciler) deploymentForGateway(
-	gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
+func (r *GatewayReconciler) deploymentForGateway(gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
 	ls := labelsForGateway(gateway.Name)
 	replicas := int32(1)
 
@@ -682,7 +681,12 @@ func (r *GatewayReconciler) deploymentForGateway(
 								},
 							},
 						},
-						Args: []string{"tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run", "--token", token},
+						Args: []string{"tunnel", "run"},
+						Env: []corev1.EnvVar{
+							{Name: "NO_AUTOUPDATE", Value: "true"},
+							{Name: "TUNNEL_METRICS", Value: "0.0.0.0:2000"},
+							{Name: "TUNNEL_TOKEN", Value: token},
+						},
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler:     readyProbe,
 							FailureThreshold: 3,
