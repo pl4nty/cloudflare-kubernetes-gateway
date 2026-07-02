@@ -641,6 +641,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 			},
 		},
 	}
+	var tolerations []corev1.Toleration
 	containerResources := corev1.ResourceRequirements{}
 	// Apply custom config
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
@@ -685,6 +686,14 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 					}
 				}
 
+				// Add custom tolerations
+				if s, ok := configMap.Data["tolerations"]; ok {
+					err := yaml.UnmarshalStrict([]byte(s), &tolerations)
+					if err != nil {
+						logger.Error(err, "Failed to parse tolerations field in infrastructure parameters")
+					}
+				}
+
 				// Add custom container resource requirements
 				if s, ok := configMap.Data["resources"]; ok {
 					err := yaml.UnmarshalStrict([]byte(s), &containerResources)
@@ -712,7 +721,8 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 				},
 				Spec: corev1.PodSpec{
 					NodeSelector: nodeSelector,
-					Affinity: affinity,
+					Affinity:     affinity,
+					Tolerations:  tolerations,
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: &[]bool{true}[0],
 						// IMPORTANT: seccomProfile was introduced with Kubernetes 1.19
