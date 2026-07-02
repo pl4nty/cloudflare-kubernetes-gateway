@@ -674,7 +674,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 				// Add custom nodeAffinity
 				if s, ok := configMap.Data["affinity"]; ok {
 					var customAffinity corev1.Affinity
-					err := customAffinity.Unmarshal([]byte(s))
+					err := yaml.UnmarshalStrict([]byte(s), &customAffinity)
 					if err != nil {
 						logger.Error(err, "Failed to parse affinity field in infrastructure parameters")
 					} else {
@@ -687,7 +687,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 
 				// Add custom container resource requirements
 				if s, ok := configMap.Data["resources"]; ok {
-					err := containerResources.Unmarshal([]byte(s))
+					err := yaml.UnmarshalStrict([]byte(s), &containerResources)
 					if err != nil {
 						logger.Error(err, "Failed to parse resources field in infrastructure parameters")
 					}
