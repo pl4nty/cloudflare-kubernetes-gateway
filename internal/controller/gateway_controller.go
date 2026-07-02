@@ -618,7 +618,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 
 	// Defaults
 	replicas := int32(1)
-	nodeSelector := map[string]string{}
+	var nodeSelector map[string]string
 	affinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
@@ -642,7 +642,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 		},
 	}
 	var tolerations []corev1.Toleration
-	containerResources := corev1.ResourceRequirements{}
+	var containerResources corev1.ResourceRequirements
 	// Apply custom config
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
 		parametersRef := gateway.Spec.Infrastructure.ParametersRef
