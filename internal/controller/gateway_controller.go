@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/yaml"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -617,6 +618,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 
 	// Defaults
 	replicas := int32(1)
+	nodeSelector := map[string]string{}
 	affinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
@@ -661,6 +663,14 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 					}
 				}
 
+				// Add custom nodeSelector
+				if s, ok := configMap.Data["nodeSelector"]; ok {
+					err := yaml.UnmarshalStrict([]byte(s), &nodeSelector)
+					if err != nil {
+						logger.Error(err, "Failed to parse nodeSelector field in infrastructure parameters")
+					}
+				}
+
 				// Add custom nodeAffinity
 				if s, ok := configMap.Data["affinity"]; ok {
 					var customAffinity corev1.Affinity
@@ -701,6 +711,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 					Labels: ls,
 				},
 				Spec: corev1.PodSpec{
+					NodeSelector: nodeSelector,
 					Affinity: affinity,
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: &[]bool{true}[0],
