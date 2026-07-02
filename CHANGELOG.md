@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.9.0...v0.9.1) (2026-07-02)
+
+
+### Bug Fixes
+
+* **deps:** update gateway api to v1.6.0 ([#313](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/313)) ([7a41576](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/7a41576e391829d2c43a30b47a765b87f77a469b))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.5.0 ([#298](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/298)) ([2e91f0b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/2e91f0beccca15cb49be97bd8c3a3459639f0e37))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.6.0 ([#305](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/305)) ([5486bd9](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5486bd942a0a373c08888ca7465b615a3ce9e1a5))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.30.0 ([#302](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/302)) ([d5d897d](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/d5d897dc69c10d6f442c03b273f08425a0bb75af))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.31.0 ([#303](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/303)) ([f5a7d61](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f5a7d615e50f86d4e377cb0a436bcf95e2e80bb4))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.32.0 ([#308](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/308)) ([42cec7a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/42cec7a1ba47445714ba860ffe793c643459c53f))
+* **deps:** update module github.com/onsi/gomega to v1.42.0 ([#304](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/304)) ([16097b0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/16097b0d5a7e37d65881e4a128f66f3feee0625a))
+* **deps:** update module github.com/onsi/gomega to v1.42.1 ([#309](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/309)) ([51d9cfa](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/51d9cfa2cf1effe128dbf5862c693af255ca6165))
+
 ## [0.9.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.8.3...v0.9.0) (2026-06-10)
 
 
