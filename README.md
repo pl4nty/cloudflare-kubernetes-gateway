@@ -202,6 +202,9 @@ data:
     limits:
       memory: "128Mi"
       cpu: "500m"
+
+  # Set as the TUNNEL_LOGLEVEL environment variable
+  loglevel: "info"
 ```
 
 </details>

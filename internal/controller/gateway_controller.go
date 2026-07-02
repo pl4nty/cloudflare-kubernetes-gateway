@@ -2,8 +2,10 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -643,6 +645,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 	}
 	var tolerations []corev1.Toleration
 	var containerResources corev1.ResourceRequirements
+	loglevel := "info"
 	// Apply custom config
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
 		parametersRef := gateway.Spec.Infrastructure.ParametersRef
@@ -699,6 +702,16 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 					err := yaml.UnmarshalStrict([]byte(s), &containerResources)
 					if err != nil {
 						logger.Error(err, "Failed to parse resources field in infrastructure parameters")
+					}
+				}
+
+				// Set cloudflared loglevel
+				if s, ok := configMap.Data["loglevel"]; ok {
+					levels := []string{"debug", "info", "warn", "error", "fatal"}
+					if !slices.Contains(levels, s) {
+						logger.Error(errors.New("invalid config"), "loglevel field in infrastructure parameters contains invalid value")
+					} else {
+						loglevel = s
 					}
 				}
 			}
@@ -759,6 +772,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 							{Name: "NO_AUTOUPDATE", Value: "true"},
 							{Name: "TUNNEL_METRICS", Value: "0.0.0.0:2000"},
 							{Name: "TUNNEL_TOKEN", Value: token},
+							{Name: "TUNNEL_LOGLEVEL", Value: loglevel},
 						},
 						Resources: containerResources,
 						LivenessProbe: &corev1.Probe{
