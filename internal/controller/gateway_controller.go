@@ -2,10 +2,15 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
+
+	"dario.cat/mergo"
 
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/zero_trust"
@@ -24,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/yaml"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -345,8 +351,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if len(tunnels.Result) == 0 {
 		logger.Info("Creating tunnel")
 		tunnel, err := api.ZeroTrust.Tunnels.Cloudflared.New(ctx, zero_trust.TunnelCloudflaredNewParams{
-			AccountID:    cloudflare.String(account),
-			Name:         cloudflare.String(gateway.Name),
+			AccountID: cloudflare.String(account),
+			Name:      cloudflare.String(gateway.Name),
 			// config_src = cloudflare
 		})
 		if err != nil {
@@ -371,7 +377,9 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Check for parametersRef in gateway specs
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
 		parametersRef := gateway.Spec.Infrastructure.ParametersRef
-		if parametersRef.Kind == "ConfigMap" {
+		if parametersRef.Kind != "ConfigMap" {
+			logger.Info("parametersRef Kind isn't ConfigMap")
+		} else {
 			configMap := &corev1.ConfigMap{}
 			err := r.Get(ctx, types.NamespacedName{Name: parametersRef.Name, Namespace: gateway.Namespace}, configMap)
 			if err != nil {
@@ -417,11 +425,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				}
 
 				return ctrl.Result{}, nil
-			} else {
-				logger.Info("disableDeployment key is missing in ConfigMap")
 			}
-		} else {
-			logger.Info("parametersRef kind isn't configmap")
 		}
 	}
 
@@ -440,7 +444,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// TODO update existing deployment eg image changes
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new deployment
-		dep, err := r.deploymentForGateway(gateway, token)
+		dep, err := r.deploymentForGateway(ctx, gateway, token)
 		if err != nil {
 			logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
@@ -475,7 +479,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	} else {
 		// Define a new deployment
-		dep, err := r.deploymentForGateway(gateway, token)
+		dep, err := r.deploymentForGateway(ctx, gateway, token)
 		if err != nil {
 			logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
@@ -596,10 +600,16 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 
 // deploymentForGateway returns a Gateway Deployment object
 // deploys cloudflared
-func (r *GatewayReconciler) deploymentForGateway(
-	gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
+func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
+	logger := log.FromContext(ctx)
+
+	// Get the Operand image
+	image, err := imageForGateway()
+	if err != nil {
+		return nil, err
+	}
+
 	ls := labelsForGateway(gateway.Name)
-	replicas := int32(1)
 
 	readyProbe := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
@@ -608,10 +618,104 @@ func (r *GatewayReconciler) deploymentForGateway(
 		},
 	}
 
-	// Get the Operand image
-	image, err := imageForGateway()
-	if err != nil {
-		return nil, err
+	// Defaults
+	replicas := int32(1)
+	var nodeSelector map[string]string
+	affinity := &corev1.Affinity{
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: []corev1.NodeSelectorRequirement{
+							{
+								Key:      "kubernetes.io/arch",
+								Operator: "In",
+								Values:   []string{"amd64", "arm64"},
+							},
+							{
+								Key:      "kubernetes.io/os",
+								Operator: "In",
+								Values:   []string{"linux"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	var tolerations []corev1.Toleration
+	var containerResources corev1.ResourceRequirements
+	loglevel := "info"
+	// Apply custom config
+	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
+		parametersRef := gateway.Spec.Infrastructure.ParametersRef
+		if parametersRef.Kind != "ConfigMap" {
+			logger.Info("infrastructure.parametersRef Kind isn't ConfigMap")
+		} else {
+			configMap := &corev1.ConfigMap{}
+			err := r.Get(ctx, types.NamespacedName{Name: parametersRef.Name, Namespace: gateway.Namespace}, configMap)
+			if err != nil {
+				logger.Error(err, "Failed to get ConfigMap referenced in infrastructure.parametersRef")
+			} else {
+				// Update replicas
+				if s, ok := configMap.Data["replicas"]; ok {
+					i, err := strconv.ParseInt(s, 10, 32)
+					if err != nil {
+						logger.Error(err, "Failed to parse replicas field in infrastructure parameters")
+					} else {
+						replicas = int32(i)
+					}
+				}
+
+				// Add custom nodeSelector
+				if s, ok := configMap.Data["nodeSelector"]; ok {
+					err := yaml.UnmarshalStrict([]byte(s), &nodeSelector)
+					if err != nil {
+						logger.Error(err, "Failed to parse nodeSelector field in infrastructure parameters")
+					}
+				}
+
+				// Add custom nodeAffinity
+				if s, ok := configMap.Data["affinity"]; ok {
+					var customAffinity corev1.Affinity
+					err := yaml.UnmarshalStrict([]byte(s), &customAffinity)
+					if err != nil {
+						logger.Error(err, "Failed to parse affinity field in infrastructure parameters")
+					} else {
+						err := mergo.Merge(affinity, customAffinity, mergo.WithOverride)
+						if err != nil {
+							logger.Error(err, "Failed to merge custom Deployment affinity and defaults")
+						}
+					}
+				}
+
+				// Add custom tolerations
+				if s, ok := configMap.Data["tolerations"]; ok {
+					err := yaml.UnmarshalStrict([]byte(s), &tolerations)
+					if err != nil {
+						logger.Error(err, "Failed to parse tolerations field in infrastructure parameters")
+					}
+				}
+
+				// Add custom container resource requirements
+				if s, ok := configMap.Data["resources"]; ok {
+					err := yaml.UnmarshalStrict([]byte(s), &containerResources)
+					if err != nil {
+						logger.Error(err, "Failed to parse resources field in infrastructure parameters")
+					}
+				}
+
+				// Set cloudflared loglevel
+				if s, ok := configMap.Data["loglevel"]; ok {
+					levels := []string{"debug", "info", "warn", "error", "fatal"}
+					if !slices.Contains(levels, s) {
+						logger.Error(errors.New("invalid config"), "loglevel field in infrastructure parameters contains invalid value")
+					} else {
+						loglevel = s
+					}
+				}
+			}
+		}
 	}
 
 	dep := &appsv1.Deployment{
@@ -629,28 +733,9 @@ func (r *GatewayReconciler) deploymentForGateway(
 					Labels: ls,
 				},
 				Spec: corev1.PodSpec{
-					Affinity: &corev1.Affinity{
-						NodeAffinity: &corev1.NodeAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-								NodeSelectorTerms: []corev1.NodeSelectorTerm{
-									{
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "kubernetes.io/arch",
-												Operator: "In",
-												Values:   []string{"amd64", "arm64"},
-											},
-											{
-												Key:      "kubernetes.io/os",
-												Operator: "In",
-												Values:   []string{"linux"},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					NodeSelector: nodeSelector,
+					Affinity:     affinity,
+					Tolerations:  tolerations,
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: &[]bool{true}[0],
 						// IMPORTANT: seccomProfile was introduced with Kubernetes 1.19
@@ -682,7 +767,14 @@ func (r *GatewayReconciler) deploymentForGateway(
 								},
 							},
 						},
-						Args: []string{"tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run", "--token", token},
+						Args: []string{"tunnel", "run"},
+						Env: []corev1.EnvVar{
+							{Name: "NO_AUTOUPDATE", Value: "true"},
+							{Name: "TUNNEL_METRICS", Value: "0.0.0.0:2000"},
+							{Name: "TUNNEL_TOKEN", Value: token},
+							{Name: "TUNNEL_LOGLEVEL", Value: loglevel},
+						},
+						Resources: containerResources,
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler:     readyProbe,
 							FailureThreshold: 3,

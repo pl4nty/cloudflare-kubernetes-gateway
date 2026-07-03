@@ -125,49 +125,91 @@ The v1 Core spec is not yet supported, as some features (eg header-based routing
 * Gateway gatewayClassName, listeners aren't validated
 * GatewayClass Core fields -->
 
-## Standalone cloudflared
+## Configuring cloudflared
 
 By default, a [Cloudflare Tunnel client](https://github.com/cloudflare/cloudflared) (cloudflared) runs for each Gateway, as a Deployment in the Gateway's namespace.
-Additional clients can be deployed ([guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/deployment-guides/)) to customise parameters like replicas or tolerations, and traffic will be load-balanced between them and the built-in client.
-To disable the built-in Deployment and only use standalone clients:
+Additional clients can be deployed ([guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/deployment-guides/))
+to customise parameters that aren't exposed in the Gateway config,
+and traffic will be load-balanced between them and the built-in client.
 
-1. Create a ConfigMap with `disableDeployment=true`:
-   <details>
-   <summary>ConfigMap manifest</summary>
+The internal cloudflared can be configured with a ConfigMap referenced from the Gateway:
+<details>
+<summary>Gateway manifest</summary>
 
-   ```yaml
-   # kubectl create configmap -n cloudflare-gateway gateway --from-literal=disableDeployment=true
-   apiVersion: v1
-   kind: ConfigMap
-   metadata:
-     name: gateway
-     namespace: cloudflare-gateway
-   data:
-     disableDeployment: "true" # string!!
-   ```
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway
+  namespace: cloudflare-gateway
+spec:
+  gatewayClassName: cloudflare
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+  infrastructure:
+    parametersRef:
+      group: ""
+      kind: ConfigMap
+      name: gateway
+```
 
-   </details>
-2. Reference it from the Gateway:
-   <details>
-   <summary>Gateway manifest</summary>
+</details>
+<details>
+<summary>ConfigMap manifest</summary>
 
-   ```yaml
-   apiVersion: gateway.networking.k8s.io/v1
-   kind: Gateway
-   metadata:
-     name: gateway
-     namespace: cloudflare-gateway
-   spec:
-     gatewayClassName: cloudflare
-     listeners:
-     - name: http
-       protocol: HTTP
-       port: 80
-     infrastructure:
-       parametersRef:
-         group: ""
-         kind: ConfigMap
-         name: gateway
-   ```
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway
+  namespace: cloudflare-gateway
+data:
+  # Disables the internal cloudflared deployment entirely. Separate clients must be deployed
+  disableDeployment: "true" # string
 
-   </details>
+  # The following are literal strings in yaml format that are passed directly through to the deployment spec
+  # Values are examples, not the defaults
+
+  # DeploymentSpec.replicas
+  replicas: "1" # string
+  # PodSpec.nodeSelector
+  nodeSelector: |
+    disktype: ssd
+  # PodSpec.affinity
+  affinity: |
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: disktype
+            operator: In
+            values:
+            - ssd
+  # PodSpec.tolerations
+  tolerations: |
+    - key: "key1"
+      operator: "Equal"
+      value: "value1"
+      effect: "NoSchedule"
+  # PodSpec.containers[gateway].resources
+  resources: |
+    requests:
+      memory: "64Mi"
+      cpu: "250m"
+    limits:
+      memory: "128Mi"
+      cpu: "500m"
+
+  # Set as the TUNNEL_LOGLEVEL environment variable
+  loglevel: "info"
+```
+
+</details>
+
+See also:
+- [Assign Pods to Nodes](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)
+- [Assign Pods to Nodes using Node Affinity](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/)
+- [Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
