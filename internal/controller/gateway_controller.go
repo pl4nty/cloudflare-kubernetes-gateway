@@ -445,7 +445,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// TODO update existing deployment eg image changes
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new deployment
-		dep, err := r.deploymentForGateway(ctx, gateway, token)
+		dep, err := r.deploymentForGateway(ctx, gateway)
 		if err != nil {
 			logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
@@ -480,7 +480,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	} else {
 		// Define a new deployment
-		dep, err := r.deploymentForGateway(ctx, gateway, token)
+		dep, err := r.deploymentForGateway(ctx, gateway)
 		if err != nil {
 			logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
@@ -601,7 +601,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 
 // deploymentForGateway returns a Gateway Deployment object
 // deploys cloudflared
-func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
+func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *gatewayv1.Gateway) (*appsv1.Deployment, error) {
 	logger := log.FromContext(ctx)
 
 	// Get the Operand image
@@ -772,8 +772,13 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 						Env: []corev1.EnvVar{
 							{Name: "NO_AUTOUPDATE", Value: "true"},
 							{Name: "TUNNEL_METRICS", Value: "0.0.0.0:2000"},
-							{Name: "TUNNEL_TOKEN", Value: token},
 							{Name: "TUNNEL_LOGLEVEL", Value: loglevel},
+						},
+						EnvFrom: []corev1.EnvFromSource{
+							{SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{Name: gateway.Name},
+								Optional:             new(false),
+							}},
 						},
 						Resources: containerResources,
 						LivenessProbe: &corev1.Probe{
@@ -831,6 +836,26 @@ func imageForGateway() (string, error) {
 		return "", fmt.Errorf("unable to find %s environment variable with the image", imageEnvVar)
 	}
 	return image, nil
+}
+
+// secretForGateway returns a Secret object containing the Cloudflare Tunnel token
+func (r *GatewayReconciler) secretForGateway(gateway *gatewayv1.Gateway, token string) (*corev1.Secret, error) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      gateway.Name,
+			Namespace: gateway.Namespace,
+		},
+		Type: "Opaque",
+		StringData: map[string]string{
+			"TUNNEL_TOKEN": token,
+		},
+	}
+
+	// Set the ownerRef for the Secret
+	if err := ctrl.SetControllerReference(gateway, secret, r.Scheme); err != nil {
+		return nil, err
+	}
+	return secret, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
