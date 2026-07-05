@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/events"
+	// "k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -737,7 +738,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 					Affinity:     affinity,
 					Tolerations:  tolerations,
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: &[]bool{true}[0],
+						RunAsNonRoot: new(true),
 						// IMPORTANT: seccomProfile was introduced with Kubernetes 1.19
 						// If you are looking for to produce solutions to be supported
 						// on lower versions you must remove this option.
@@ -758,9 +759,9 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 						// Ensure restrictive context for the container
 						// More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
 						SecurityContext: &corev1.SecurityContext{
-							RunAsNonRoot:             &[]bool{true}[0],
-							RunAsUser:                &[]int64{1001}[0],
-							AllowPrivilegeEscalation: &[]bool{false}[0],
+							RunAsNonRoot:             new(true),
+							RunAsUser:                new(int64(1001)),
+							AllowPrivilegeEscalation: new(false),
 							Capabilities: &corev1.Capabilities{
 								Drop: []corev1.Capability{
 									"ALL",
