@@ -2,7 +2,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"github.com/cloudflare/cloudflare-go/v7"
+	"github.com/cloudflare/cloudflare-go/v7/accounts"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -61,7 +65,7 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are set"
 	} else {
-		msg, _ = VerifyAPIToken(ctx, account, api)
+		msg, _ = verifyAPIToken(ctx, account, api)
 	}
 
 	var condition metav1.Condition
@@ -102,4 +106,23 @@ func (r *GatewayClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}).
 		WithEventFilter(pred).
 		Complete(r)
+}
+
+func verifyAPIToken(ctx context.Context, account string, api *cloudflare.Client) (string, error) {
+	token, err := api.User.Tokens.Verify(ctx)
+	if err != nil {
+		token, err := api.Accounts.Tokens.Verify(ctx, accounts.TokenVerifyParams{AccountID: cloudflare.String(account)})
+		if err != nil {
+			return err.Error() + " Ensure ACCOUNT_ID and TOKEN are valid", nil
+		} else {
+			if token.Status != "active" {
+				return fmt.Sprintf("Token status is %s, not active. Please check the Cloudflare dashboard", token.Status), nil
+			}
+		}
+	} else {
+		if token.Status != "active" {
+			return fmt.Sprintf("Token status is %s, not active. Please check the Cloudflare dashboard", token.Status), nil
+		}
+	}
+	return "", nil
 }
