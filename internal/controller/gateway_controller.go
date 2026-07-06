@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"slices"
 	"strconv"
@@ -584,9 +585,12 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 		} else {
 			// Restart the Deployment if it exists
 			if foundDeploy != nil {
-				foundDeploy.Spec.Template.Annotations = map[string]string{
-					controllerName + "tokenSecretUpdated": time.Now().UTC().Format(time.RFC3339Nano),
-				}
+				// Merge with existing annotations
+				annotations := foundDeploy.Spec.Template.GetAnnotations()
+				maps.Copy(annotations, map[string]string{
+					controllerName + "/tokenSecretUpdated": time.Now().UTC().Format(time.RFC3339Nano),
+				})
+				foundDeploy.Spec.Template.SetAnnotations(annotations)
 
 				if err := r.Update(ctx, foundDeploy); err != nil {
 					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
@@ -634,9 +638,12 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 			// FIX: only update the annotation if the Secret has actually changed after Update
 			// Restart the Deployment if it exists
 			if foundDeploy != nil {
-				foundDeploy.Spec.Template.Annotations = map[string]string{
-					controllerName + "tokenSecretUpdated": time.Now().UTC().Format(time.RFC3339Nano),
-				}
+				// Merge with existing annotations
+				annotations := foundDeploy.Spec.Template.GetAnnotations()
+				maps.Copy(annotations, map[string]string{
+					controllerName + "/tokenSecretUpdated": time.Now().UTC().Format(time.RFC3339Nano),
+				})
+				foundDeploy.Spec.Template.SetAnnotations(annotations)
 
 				if err := r.Update(ctx, foundDeploy); err != nil {
 					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
