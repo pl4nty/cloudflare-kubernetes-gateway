@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"maps"
@@ -588,7 +589,7 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 				// Merge with existing annotations
 				annotations := foundDeploy.Spec.Template.GetAnnotations()
 				maps.Copy(annotations, map[string]string{
-					controllerName + "/tokenSecretUpdated": time.Now().UTC().Format(time.RFC3339Nano),
+					controllerName + "/tunnelTokenHash": sha256String(token),
 				})
 				foundDeploy.Spec.Template.SetAnnotations(annotations)
 
@@ -635,13 +636,12 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 				return ctrl.Result{}, err
 			}
 		} else {
-			// FIX: only update the annotation if the Secret has actually changed after Update
 			// Restart the Deployment if it exists
 			if foundDeploy != nil {
 				// Merge with existing annotations
 				annotations := foundDeploy.Spec.Template.GetAnnotations()
 				maps.Copy(annotations, map[string]string{
-					controllerName + "/tokenSecretUpdated": time.Now().UTC().Format(time.RFC3339Nano),
+					controllerName + "/tunnelTokenHash": sha256String(token),
 				})
 				foundDeploy.Spec.Template.SetAnnotations(annotations)
 
@@ -993,6 +993,13 @@ func (r *GatewayReconciler) secretForGateway(gateway *gatewayv1.Gateway, token s
 		return nil, err
 	}
 	return secret, nil
+}
+
+// sha256String returns a sha256 hash of the input as a string
+func sha256String(s string) string {
+	h := sha256.New()
+	h.Write([]byte(s))
+	return string(h.Sum(nil))
 }
 
 // SetupWithManager sets up the controller with the Manager.
