@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -65,7 +66,9 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		msg = err.Error() + " Ensure ACCOUNT_ID and TOKEN are set"
 	} else {
-		msg, _ = verifyAPIToken(ctx, account, api)
+		if err := verifyAPIToken(ctx, account, api); err != nil {
+			msg = err.Error()
+		}
 	}
 
 	var condition metav1.Condition
@@ -108,21 +111,24 @@ func (r *GatewayClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func verifyAPIToken(ctx context.Context, account string, api *cloudflare.Client) (string, error) {
+func verifyAPIToken(ctx context.Context, account string, api *cloudflare.Client) error {
+	ErrorVerifyFailed := errors.New("token verification failed")
+	ErrorInactiveToken := errors.New("token is not active")
+
 	token, err := api.User.Tokens.Verify(ctx)
 	if err != nil {
 		token, err := api.Accounts.Tokens.Verify(ctx, accounts.TokenVerifyParams{AccountID: cloudflare.String(account)})
 		if err != nil {
-			return err.Error() + " Ensure ACCOUNT_ID and TOKEN are valid", nil
+			return fmt.Errorf("%w: %s", ErrorVerifyFailed, "Ensure ACCOUNT_ID and TOKEN are valid")
 		} else {
 			if token.Status != "active" {
-				return fmt.Sprintf("Token status is %s, not active. Please check the Cloudflare dashboard", token.Status), nil
+				return fmt.Errorf("%w: %s", ErrorInactiveToken, token.Status)
 			}
 		}
 	} else {
 		if token.Status != "active" {
-			return fmt.Sprintf("Token status is %s, not active. Please check the Cloudflare dashboard", token.Status), nil
+			return fmt.Errorf("%w: %s", ErrorInactiveToken, token.Status)
 		}
 	}
-	return "", nil
+	return nil
 }
