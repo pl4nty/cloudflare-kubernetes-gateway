@@ -58,7 +58,7 @@ type GatewayReconciler struct {
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch;delete
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create
-// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=create;get;list;update;watch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -865,6 +865,7 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.Gateway{}).
+		Owns(&corev1.Secret{}).
 		Owns(&appsv1.Deployment{}).
 		WithEventFilter(pred).
 		Complete(r)
