@@ -546,6 +546,14 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewayv1.Gateway, token string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
+	foundDeploy := &appsv1.Deployment{}
+	if err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, foundDeploy); err != nil && apierrors.IsNotFound(err) {
+		foundDeploy = nil
+	} else if err != nil {
+		logger.Error(err, "Failed to get Deployment")
+		return ctrl.Result{}, err
+	}
+
 	found := &corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -573,6 +581,23 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 			logger.Error(err, "Failed to create new Secret",
 				"Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
 			return ctrl.Result{}, err
+		} else {
+			// Restart the Deployment if it exists
+			if foundDeploy != nil {
+				foundDeploy.Spec.Template.Annotations = map[string]string{
+					controllerName + "tokenSecretUpdated": time.Now().UTC().Format(time.RFC3339Nano),
+				}
+
+				if err := r.Update(ctx, foundDeploy); err != nil {
+					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+						logger.Info("Conflict when updating Deployment, retrying")
+						return ctrl.Result{Requeue: true}, nil
+					} else {
+						logger.Error(err, "Failed to update Deployment")
+						return ctrl.Result{}, err
+					}
+				}
+			}
 		}
 	} else if err != nil {
 		logger.Error(err, "Failed to get Secret")
@@ -606,8 +631,23 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 				return ctrl.Result{}, err
 			}
 		} else {
-			// FIX: restart the Deployment (Secret has been updated)
-			// the token may not have changed
+			// FIX: only update the annotation if the Secret has actually changed after Update
+			// Restart the Deployment if it exists
+			if foundDeploy != nil {
+				foundDeploy.Spec.Template.Annotations = map[string]string{
+					controllerName + "tokenSecretUpdated": time.Now().UTC().Format(time.RFC3339Nano),
+				}
+
+				if err := r.Update(ctx, foundDeploy); err != nil {
+					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+						logger.Info("Conflict when updating Deployment, retrying")
+						return ctrl.Result{Requeue: true}, nil
+					} else {
+						logger.Error(err, "Failed to update Deployment")
+						return ctrl.Result{}, err
+					}
+				}
+			}
 		}
 	}
 
