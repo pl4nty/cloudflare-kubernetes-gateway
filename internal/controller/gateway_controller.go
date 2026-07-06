@@ -440,70 +440,72 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	token := *res
 
 	// Check if the deployment already exists, if not create a new one
-	found := &appsv1.Deployment{}
-	err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
-	// TODO update existing deployment eg image changes
-	if err != nil && apierrors.IsNotFound(err) {
-		// Define a new deployment
-		dep, err := r.deploymentForGateway(ctx, gateway)
-		if err != nil {
-			logger.Error(err, "Failed to define new Deployment resource for Gateway")
+	{
+		found := &appsv1.Deployment{}
+		err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+		// TODO update existing deployment eg image changes
+		if err != nil && apierrors.IsNotFound(err) {
+			// Define a new deployment
+			dep, err := r.deploymentForGateway(ctx, gateway)
+			if err != nil {
+				logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
-			// The following implementation will update the status
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
-				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+				// The following implementation will update the status
+				meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+					Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+					Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
 
-			if err := r.Status().Update(ctx, gateway); err != nil {
-				logger.Error(err, "Failed to update Gateway status")
+				if err := r.Status().Update(ctx, gateway); err != nil {
+					logger.Error(err, "Failed to update Gateway status")
+					return ctrl.Result{}, err
+				}
+
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{}, err
-		}
-
-		logger.Info("Creating a new Deployment",
-			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		if err = r.Create(ctx, dep); err != nil {
-			logger.Error(err, "Failed to create new Deployment",
+			logger.Info("Creating a new Deployment",
 				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-			return ctrl.Result{}, err
-		}
-
-		// Deployment created successfully
-		// We will requeue the reconciliation so that we can ensure the state
-		// and move forward for the next operations
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	} else if err != nil {
-		logger.Error(err, "Failed to get Deployment")
-		// Let's return the error for the reconciliation be re-trigged again
-		return ctrl.Result{}, err
-	} else {
-		// Define a new deployment
-		dep, err := r.deploymentForGateway(ctx, gateway)
-		if err != nil {
-			logger.Error(err, "Failed to define new Deployment resource for Gateway")
-
-			// The following implementation will update the status
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
-				Message: fmt.Sprintf("Failed to update Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
-
-			if err := r.Status().Update(ctx, gateway); err != nil {
-				logger.Error(err, "Failed to update Gateway status")
+			if err = r.Create(ctx, dep); err != nil {
+				logger.Error(err, "Failed to create new Deployment",
+					"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 				return ctrl.Result{}, err
 			}
 
+			// Deployment created successfully
+			// We will requeue the reconciliation so that we can ensure the state
+			// and move forward for the next operations
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		} else if err != nil {
+			logger.Error(err, "Failed to get Deployment")
+			// Let's return the error for the reconciliation be re-trigged again
 			return ctrl.Result{}, err
-		}
+		} else {
+			// Define a new deployment
+			dep, err := r.deploymentForGateway(ctx, gateway)
+			if err != nil {
+				logger.Error(err, "Failed to define new Deployment resource for Gateway")
 
-		if err := r.Update(ctx, dep); err != nil {
-			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-				logger.Info("Conflict when updating Deployment, retrying")
-				return ctrl.Result{Requeue: true}, nil
-			} else {
-				logger.Error(err, "Failed to update Deployment")
+				// The following implementation will update the status
+				meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+					Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+					Message: fmt.Sprintf("Failed to update Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+
+				if err := r.Status().Update(ctx, gateway); err != nil {
+					logger.Error(err, "Failed to update Gateway status")
+					return ctrl.Result{}, err
+				}
+
 				return ctrl.Result{}, err
+			}
+
+			if err := r.Update(ctx, dep); err != nil {
+				if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+					logger.Info("Conflict when updating Deployment, retrying")
+					return ctrl.Result{Requeue: true}, nil
+				} else {
+					logger.Error(err, "Failed to update Deployment")
+					return ctrl.Result{}, err
+				}
 			}
 		}
 	}
