@@ -441,6 +441,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	token := *res
 
 	// Check if the secret already exists, if not create a new one
+	// NOTE: reconcileSecret (r *GatewayReconciler, ctx context.Context, gateway *gatewayv1.Gateway, token string) -> (ctrl.Result, err)
 	{
 		found := &corev1.Secret{}
 		err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
@@ -512,6 +513,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Check if the deployment already exists, if not create a new one
+	// NOTE: reconcileDeployment (r *GatewayReconciler, ctx context.Context, gateway *gatewayv1.Gateway) -> (ctrl.Result, err)
 	{
 		found := &appsv1.Deployment{}
 		err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
