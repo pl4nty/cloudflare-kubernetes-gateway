@@ -12,7 +12,8 @@
       "description": "Process custom dependencies",
       "managerFilePatterns": [
         "/\\.ya?ml$/",
-        "/\\.go$/"
+        "/\\.go$/",
+        "/^PROJECT$/"
       ],
       "matchStrings": [
         "datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)( versioning=(?<versioning>\\S+))?\n.*?\".*:(?<currentValue>.*)\""
