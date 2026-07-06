@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/tools/events"
 	// "k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -452,7 +453,6 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				logger.Error(err, "Failed to define new Secret resource for Gateway")
 
 				// The following implementation will update the status
-				// FIX: should the status be different to the Deployment ones?
 				meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
 					Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
 					Message: fmt.Sprintf("Failed to create Secret for the custom resource (%s): (%s)", gateway.Name, err)})
@@ -472,11 +472,6 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					"Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
 				return ctrl.Result{}, err
 			}
-
-			// Secret created successfully
-			// We will requeue the reconciliation so that we can ensure the state
-			// and move forward for the next operations
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		} else if err != nil {
 			logger.Error(err, "Failed to get Secret")
 			// Let's return the error for the reconciliation be re-trigged again
@@ -496,6 +491,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					logger.Error(err, "Failed to update Gateway status")
 					return ctrl.Result{}, err
 				}
+				// FIX: restart the Deployment (Secret has been updated)
 
 				return ctrl.Result{}, err
 			}
@@ -921,7 +917,7 @@ func (r *GatewayReconciler) secretForGateway(gateway *gatewayv1.Gateway, token s
 			Name:      gateway.Name,
 			Namespace: gateway.Namespace,
 		},
-		Type: "Opaque",
+		Type: corev1.SecretTypeOpaque,
 		StringData: map[string]string{
 			"TUNNEL_TOKEN": token,
 		},
@@ -938,11 +934,15 @@ func (r *GatewayReconciler) secretForGateway(gateway *gatewayv1.Gateway, token s
 // Note that the Deployment will be also watched in order to ensure its
 // desirable state on the cluster
 func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&gatewayv1.Gateway{}).
-		Owns(&corev1.Secret{}).
-		Owns(&appsv1.Deployment{}).
-		WithEventFilter(pred).
+		For(&gatewayv1.Gateway{}, builder.WithPredicates(
+			predicate.GenerationChangedPredicate{},
+		)).
+		Owns(&corev1.Secret{}, builder.WithPredicates(
+			predicate.ResourceVersionChangedPredicate{},
+		)).
+		Owns(&appsv1.Deployment{}, builder.WithPredicates(
+			predicate.GenerationChangedPredicate{},
+		)).
 		Complete(r)
 }

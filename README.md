@@ -129,7 +129,7 @@ The v1 Core spec is not yet supported, as some features (eg header-based routing
 
 By default, a [Cloudflare Tunnel client](https://github.com/cloudflare/cloudflared) (cloudflared) runs for each Gateway, as a Deployment in the Gateway's namespace.
 
-The internal cloudflared can be configured with a ConfigMap referenced from the Gateway:
+It can be configured with a ConfigMap referenced from the Gateway:
 <details>
 <summary>Gateway manifest</summary>
 
@@ -206,7 +206,7 @@ data:
 
 </details>
 
-Additional clients can be deployed ([guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/deployment-guides/))
+Additional cloudflared clients can be deployed ([guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/deployment-guides/))
 to customise parameters that aren't exposed in the Gateway config,
 and traffic will be load-balanced between them and the built-in client.
 The Gateway controller creates a Secret with the same name as the Gateway containing the token for the Cloudflare Tunnel,
