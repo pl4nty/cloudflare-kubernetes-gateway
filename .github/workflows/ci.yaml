@@ -43,6 +43,22 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Generate dev image tag
+        id: image_tag
+        run: |
+          branch=$(printf %s '${{ github.head_ref }}' | tr '/' '_')
+          if [ -z "$branch" ]; then
+            branch=$(git symbolic-ref --quiet --short HEAD | tr '/' '_' | tr -d '\r\n')
+          fi
+          version=$(git describe --tag --always --match 'v[0-9]*' | tr -d '\r\n')
+          if [ -z "$branch" -o "$branch" = "main" ]; then
+            echo "IMAGE_TAG=$version" >> "$GITHUB_OUTPUT"
+          else
+            echo "IMAGE_TAG=${branch}_${version}" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-go@v6.5.0
         with:
           go-version: stable
@@ -54,6 +70,7 @@ jobs:
       - run: make test-e2e
         continue-on-error: true
         env:
+          IMAGE_TAG: ${{ steps.image_tag.outputs.IMAGE_TAG }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Get manager logs
@@ -70,7 +87,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway-dev:$(git describe --tag --always --match 'v[0-9]*')
+      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway-dev:${{ steps.image_tag.outputs.IMAGE_TAG }}
 
   release-please:
     if: github.ref == 'refs/heads/main'
