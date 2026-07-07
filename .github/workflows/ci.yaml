@@ -70,7 +70,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway:$(git describe --tag --always --match 'v[0-9]*')
+      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway-dev:$(git describe --tag --always --match 'v[0-9]*')
 
   release-please:
     if: github.ref == 'refs/heads/main'
