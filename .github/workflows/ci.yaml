@@ -48,9 +48,9 @@ jobs:
       - name: Generate dev image tag
         id: image_tag
         run: |
-          branch=$(printf %s '${{ github.head_ref }}' | tr '/' '_')
+          branch=$(printf %s '${{ github.head_ref }}' | tr '/' '_' | tr -cd '[:alnum:]-_.')
           if [ -z "$branch" ]; then
-            branch=$(git symbolic-ref --quiet --short HEAD | tr '/' '_' | tr -d '\r\n')
+            branch=$(git symbolic-ref --quiet --short HEAD | tr '/' '_' | tr -cd '[:alnum:]-_.')
           fi
           version=$(git describe --tag --always --match 'v[0-9]*' | tr -d '\r\n')
           if [ -z "$branch" -o "$branch" = "main" ]; then
