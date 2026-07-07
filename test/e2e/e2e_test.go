@@ -13,6 +13,7 @@ import (
 )
 
 const namespace = "cloudflare-gateway"
+const imageName = "ghcr.io/pl4nty/cloudflare-kubernetes-gateway-dev"
 
 var _ = Describe("controller", Ordered, func() {
 	BeforeAll(func() {
@@ -36,7 +37,7 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			// projectimage stores the name of the image used in the example
-			var projectimage = "ghcr.io/pl4nty/cloudflare-kubernetes-gateway:" + version
+			var projectimage = imageName + ":" + version
 
 			By("building the manager(Operator) image")
 			cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage))
