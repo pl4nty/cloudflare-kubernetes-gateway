@@ -6,10 +6,13 @@ import (
 	"os/exec"
 	"strings"
 
-	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
+	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive,staticcheck
 )
 
 const (
+	gatewayAPIVersion = "v1.6.0"
+	gatewayAPIURL     = "github.com/kubernetes-sigs/gateway-api//config/crd?ref=%s"
+
 	prometheusOperatorVersion = "v0.72.0"
 	prometheusOperatorURL     = "https://github.com/prometheus-operator/prometheus-operator/" +
 		"releases/download/%s/bundle.yaml"
@@ -22,6 +25,14 @@ func warnError(err error) {
 	fmt.Fprintf(GinkgoWriter, "warning: %v\n", err) //nolint:errcheck
 }
 
+// InstallGatewayAPI installs the Gateway API
+func InstallGatewayAPI() error {
+	url := fmt.Sprintf(gatewayAPIURL, gatewayAPIVersion)
+	cmd := exec.Command("kubectl", "apply", "--server-side", "-k", url)
+	_, err := Run(cmd)
+	return err
+}
+
 // InstallPrometheusOperator installs the prometheus Operator to be used to export the enabled metrics.
 func InstallPrometheusOperator() error {
 	url := fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
@@ -32,6 +43,8 @@ func InstallPrometheusOperator() error {
 
 // Run executes the provided command within this context
 func Run(cmd *exec.Cmd) ([]byte, error) {
+	GinkgoHelper()
+
 	dir, _ := GetProjectDir()
 	cmd.Dir = dir
 
@@ -125,7 +138,7 @@ func GetProjectDir() (string, error) {
 
 // GetProjectVersion will return the project version
 func GetProjectVersion() (string, error) {
-	cmd := exec.Command("git", "describe", "--tag", "--always", "--dirty", "--match", "'v[0-9]*'")
-	version, err := Run(cmd)
-	return strings.TrimSpace(string(version)), err
+  cmd := exec.Command("git", "describe", "--tag", "--always", "--dirty", "--match", "'v[0-9]*'")
+  version, err := Run(cmd)
+  return strings.TrimSpace(string(version)), err
 }

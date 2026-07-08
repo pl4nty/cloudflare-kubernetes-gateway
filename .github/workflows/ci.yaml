@@ -3,31 +3,36 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, unlabeled]
   workflow_dispatch:
 
 jobs:
   scan:
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
       - uses: securego/gosec@v2.27.1
         with:
           args: "-no-fail -fmt sarif -out results.sarif ./..."
-      - uses: github/codeql-action/upload-sarif@v4.36.2
+      - uses: github/codeql-action/upload-sarif@v4.37.0
         with:
           sarif_file: results.sarif
 
   test:
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
     steps:
-      - uses: actions/checkout@v6.0.3
-      - uses: actions/setup-go@v6.4.0
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/setup-go@v6.5.0
         with:
           go-version: stable
 
@@ -36,16 +41,51 @@ jobs:
       - run: make test
 
   e2e:
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
       packages: write
     steps:
-      - uses: actions/checkout@v6.0.3
-      - uses: actions/setup-go@v6.4.0
+      - uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Generate image name and tag
+        id: image_tag
+        run: |
+          branch=$(printf %s '${{ github.head_ref }}' | tr '/' '_' | tr -cd '[:alnum:]-_.')
+          if [ -z "$branch" ]; then
+            branch=$(git symbolic-ref --quiet --short HEAD | tr '/' '_' | tr -cd '[:alnum:]-_.')
+          fi
+          version=$(git describe --tag --always --match 'v[0-9]*' | tr -d '\r\n')
+          if [ -z "$branch" -o "$branch" = "main" ]; then
+            echo "IMAGE_TAG=$version" >> "$GITHUB_OUTPUT"
+          else
+            echo "IMAGE_TAG=${branch}_${version}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "IMAGE_NAME=ghcr.io/pl4nty/cloudflare-kubernetes-gateway-dev" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@v6.5.0
         with:
           go-version: stable
+
+      # NOTE: manual login is required when KO_DOCKER_REPO is set
+      - uses: docker/login-action@v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: ko-build/setup-ko@v0.10
+        env:
+          KO_DOCKER_REPO: ${{ steps.image_tag.outputs.IMAGE_NAME }}
+      - name: Build and push image
+        run: ko build --bare ./cmd --tags ${{ steps.image_tag.outputs.IMAGE_TAG }}
+        env:
+          KO_DEFAULTBASEIMAGE: gcr.io/distroless/static:nonroot
+          KO_DEFAULTPLATFORMS: linux/arm64,linux/amd64
+      - run: docker pull ${{ steps.image_tag.outputs.IMAGE_NAME }}:${{ steps.image_tag.outputs.IMAGE_TAG }}
 
       - name: Create kind cluster
         uses: helm/kind-action@v1.14.0
@@ -54,6 +94,8 @@ jobs:
       - run: make test-e2e
         continue-on-error: true
         env:
+          IMAGE_NAME: ${{ steps.image_tag.outputs.IMAGE_NAME }}
+          IMAGE_TAG: ${{ steps.image_tag.outputs.IMAGE_TAG }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Get manager logs
@@ -64,13 +106,6 @@ jobs:
         with:
           name: conformance-report
           path: '*-report.yaml'
-
-      - uses: docker/login-action@v4.2.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - run: make docker-push IMG=ghcr.io/pl4nty/cloudflare-kubernetes-gateway:$(git describe --tag --always --match 'v[0-9]*')
 
   release-please:
     if: github.ref == 'refs/heads/main'
@@ -93,20 +128,20 @@ jobs:
       contents: write
       packages: write
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
       - run: git fetch --force --tags
-      - uses: docker/login-action@v4.2.0
+      - uses: docker/login-action@v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - uses: actions/setup-go@v6.4.0
+      - uses: actions/setup-go@v6.5.0
         with:
           go-version: stable
-      - uses: goreleaser/goreleaser-action@v7.2.2
+      - uses: goreleaser/goreleaser-action@v7.2.3
         with:
           args: release --clean
         env:
