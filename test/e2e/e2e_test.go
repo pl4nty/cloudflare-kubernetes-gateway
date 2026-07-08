@@ -13,7 +13,6 @@ import (
 )
 
 const namespace = "cloudflare-gateway"
-const imageName = "ghcr.io/pl4nty/cloudflare-kubernetes-gateway-dev"
 
 var _ = Describe("controller", Ordered, func() {
 	BeforeAll(func() {
@@ -33,11 +32,13 @@ var _ = Describe("controller", Ordered, func() {
 			var controllerPodName string
 			var err error
 
-			version, err := utils.GetProjectVersion()
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			imageName, ok := os.LookupEnv("IMAGE_NAME")
+			Ω(ok).Should(BeTrueBecause("IMAGE_NAME env var should exist"))
+			imageTag, ok :=  os.LookupEnv("IMAGE_TAG")
+			Ω(ok).Should(BeTrueBecause("IMAGE_TAG env var should exist"))
 
 			// projectimage stores the name of the image used in the example
-			var projectimage = imageName + ":" + version
+			var projectimage = imageName + ":" + imageTag
 
 			By("checking if the manager(Operator) image exists locally")
 			cmd := exec.Command("make", "docker-image-ls", fmt.Sprintf("IMG=%s", projectimage))

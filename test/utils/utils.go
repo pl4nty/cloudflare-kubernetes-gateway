@@ -125,10 +125,7 @@ func GetProjectDir() (string, error) {
 
 // GetProjectVersion will return the project version
 func GetProjectVersion() (string, error) {
-	var env = "IMAGE_TAG"
-	imageTag, found := os.LookupEnv(env)
-	if !found {
-		return "", fmt.Errorf("unable to find %s environment variable", env)
-	}
-	return imageTag, nil
+  cmd := exec.Command("git", "describe", "--tag", "--always", "--dirty", "--match", "'v[0-9]*'")
+  version, err := Run(cmd)
+  return strings.TrimSpace(string(version)), err
 }
