@@ -39,8 +39,8 @@ var _ = Describe("controller", Ordered, func() {
 			// projectimage stores the name of the image used in the example
 			var projectimage = imageName + ":" + version
 
-			By("building the manager(Operator) image")
-			cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage))
+			By("checking if the manager(Operator) image exists locally")
+			cmd := exec.Command("make", "docker-image-ls", fmt.Sprintf("IMG=%s", projectimage))
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
