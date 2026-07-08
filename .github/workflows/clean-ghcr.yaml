@@ -1,0 +1,18 @@
+name: Delete old dev images
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"  # daily
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: snok/container-retention-policy@v3.1.0
+        with:
+          account: user
+          token: ${{ secrets.GITHUB_TOKEN }}
+          image-names: "cloudflare-kubernetes-gateway-dev"
+          cut-off: 4w

@@ -47,7 +47,7 @@ help: ## Display this help.
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	mkdir -p config/crd/bases
-	wget https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml -O config/crd/bases/gatewayapi.yaml
+	wget https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.0/standard-install.yaml -O config/crd/bases/gatewayapi.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -102,6 +102,10 @@ docker-build: ## Build docker image with the manager.
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
+
+.PHONY: docker-image-ls
+docker-image-ls: ## Push docker image with the manager.
+	$(CONTAINER_TOOL) image ls -q ${IMG}
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:

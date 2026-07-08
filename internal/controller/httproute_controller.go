@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/safecast"
+
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/dns"
 	"github.com/cloudflare/cloudflare-go/v7/zero_trust"
@@ -182,7 +184,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		listeners := []gatewayv1.ListenerStatus{}
 		for _, listener := range gatewayObj.Status.Listeners {
-			listener.AttachedRoutes = int32(len(ingress))
+			listener.AttachedRoutes = safecast.MustConv[int32](len(ingress))
 			listeners = append(listeners, listener)
 		}
 		logger.Info("Updating Gateway listeners", "AttachedRoutes", len(ingress))

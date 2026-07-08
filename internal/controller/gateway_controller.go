@@ -2,10 +2,17 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
+	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
+
+	"dario.cat/mergo"
 
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/zero_trust"
@@ -20,10 +27,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/yaml"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -51,7 +60,7 @@ type GatewayReconciler struct {
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch;delete
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create
-// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=create;get;list;update;watch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -345,8 +354,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if len(tunnels.Result) == 0 {
 		logger.Info("Creating tunnel")
 		tunnel, err := api.ZeroTrust.Tunnels.Cloudflared.New(ctx, zero_trust.TunnelCloudflaredNewParams{
-			AccountID:    cloudflare.String(account),
-			Name:         cloudflare.String(gateway.Name),
+			AccountID: cloudflare.String(account),
+			Name:      cloudflare.String(gateway.Name),
 			// config_src = cloudflare
 		})
 		if err != nil {
@@ -368,10 +377,27 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		tunnelID = tunnels.Result[0].ID
 	}
 
+	// Get the tunnel token
+	res, err := api.ZeroTrust.Tunnels.Cloudflared.Token.Get(ctx, tunnelID, zero_trust.TunnelCloudflaredTokenGetParams{
+		AccountID: cloudflare.String(account),
+	})
+	if err != nil {
+		logger.Error(err, "Failed to get tunnel token")
+		return ctrl.Result{}, err
+	}
+	token := *res
+
+	// Create a Secret with the tunnel token
+	if result, err := r.reconcileSecret(ctx, gateway, token); err != nil {
+		return result, err
+	}
+
 	// Check for parametersRef in gateway specs
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
 		parametersRef := gateway.Spec.Infrastructure.ParametersRef
-		if parametersRef.Kind == "ConfigMap" {
+		if parametersRef.Kind != "ConfigMap" {
+			logger.Info("parametersRef Kind isn't ConfigMap")
+		} else {
 			configMap := &corev1.ConfigMap{}
 			err := r.Get(ctx, types.NamespacedName{Name: parametersRef.Name, Namespace: gateway.Namespace}, configMap)
 			if err != nil {
@@ -417,90 +443,13 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				}
 
 				return ctrl.Result{}, nil
-			} else {
-				logger.Info("disableDeployment key is missing in ConfigMap")
 			}
-		} else {
-			logger.Info("parametersRef kind isn't configmap")
 		}
 	}
 
-	res, err := api.ZeroTrust.Tunnels.Cloudflared.Token.Get(ctx, tunnelID, zero_trust.TunnelCloudflaredTokenGetParams{
-		AccountID: cloudflare.String(account),
-	})
-	if err != nil {
-		logger.Error(err, "Failed to get tunnel token")
-		return ctrl.Result{}, err
-	}
-	token := *res
-
-	// Check if the deployment already exists, if not create a new one
-	found := &appsv1.Deployment{}
-	err = r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
-	// TODO update existing deployment eg image changes
-	if err != nil && apierrors.IsNotFound(err) {
-		// Define a new deployment
-		dep, err := r.deploymentForGateway(gateway, token)
-		if err != nil {
-			logger.Error(err, "Failed to define new Deployment resource for Gateway")
-
-			// The following implementation will update the status
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
-				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
-
-			if err := r.Status().Update(ctx, gateway); err != nil {
-				logger.Error(err, "Failed to update Gateway status")
-				return ctrl.Result{}, err
-			}
-
-			return ctrl.Result{}, err
-		}
-
-		logger.Info("Creating a new Deployment",
-			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		if err = r.Create(ctx, dep); err != nil {
-			logger.Error(err, "Failed to create new Deployment",
-				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-			return ctrl.Result{}, err
-		}
-
-		// Deployment created successfully
-		// We will requeue the reconciliation so that we can ensure the state
-		// and move forward for the next operations
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	} else if err != nil {
-		logger.Error(err, "Failed to get Deployment")
-		// Let's return the error for the reconciliation be re-trigged again
-		return ctrl.Result{}, err
-	} else {
-		// Define a new deployment
-		dep, err := r.deploymentForGateway(gateway, token)
-		if err != nil {
-			logger.Error(err, "Failed to define new Deployment resource for Gateway")
-
-			// The following implementation will update the status
-			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
-				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
-				Message: fmt.Sprintf("Failed to update Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
-
-			if err := r.Status().Update(ctx, gateway); err != nil {
-				logger.Error(err, "Failed to update Gateway status")
-				return ctrl.Result{}, err
-			}
-
-			return ctrl.Result{}, err
-		}
-
-		if err := r.Update(ctx, dep); err != nil {
-			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-				logger.Info("Conflict when updating Deployment, retrying")
-				return ctrl.Result{Requeue: true}, nil
-			} else {
-				logger.Error(err, "Failed to update Deployment")
-				return ctrl.Result{}, err
-			}
-		}
+	// Create a Deployment
+	if result, err := r.reconcileDeployment(ctx, gateway); err != nil {
+		return result, err
 	}
 
 	if err := r.Get(ctx, req.NamespacedName, gateway); err != nil {
@@ -594,12 +543,210 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	return nil
 }
 
+// reconcileSecret checks if the secret already exists, if not create a new one
+func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewayv1.Gateway, token string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	foundDeploy := &appsv1.Deployment{}
+	if err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, foundDeploy); err != nil && apierrors.IsNotFound(err) {
+		foundDeploy = nil
+	} else if err != nil {
+		logger.Error(err, "Failed to get Deployment")
+		return ctrl.Result{}, err
+	}
+
+	found := &corev1.Secret{}
+	err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+	if err != nil && apierrors.IsNotFound(err) {
+		// Define a new secret
+		secret, err := r.secretForGateway(gateway, token)
+		if err != nil {
+			logger.Error(err, "Failed to define new Secret resource for Gateway")
+
+			// The following implementation will update the status
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+				Message: fmt.Sprintf("Failed to create Secret for the custom resource (%s): (%s)", gateway.Name, err)})
+
+			if err := r.Status().Update(ctx, gateway); err != nil {
+				logger.Error(err, "Failed to update Gateway status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("Creating a new Secret",
+			"Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
+		if err = r.Create(ctx, secret); err != nil {
+			logger.Error(err, "Failed to create new Secret",
+				"Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
+			return ctrl.Result{}, err
+		} else {
+			// Restart the Deployment if it exists
+			if foundDeploy != nil {
+				// Merge with existing annotations
+				annotations := foundDeploy.Spec.Template.GetAnnotations()
+				maps.Copy(annotations, map[string]string{
+					controllerName + "/tunnelTokenHash": sha256String(token),
+				})
+				foundDeploy.Spec.Template.SetAnnotations(annotations)
+
+				if err := r.Update(ctx, foundDeploy); err != nil {
+					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+						logger.Info("Conflict when updating Deployment, retrying")
+						return ctrl.Result{Requeue: true}, nil
+					} else {
+						logger.Error(err, "Failed to update Deployment")
+						return ctrl.Result{}, err
+					}
+				}
+			}
+		}
+	} else if err != nil {
+		logger.Error(err, "Failed to get Secret")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	} else {
+		// Define a new secret
+		secret, err := r.secretForGateway(gateway, token)
+		if err != nil {
+			logger.Error(err, "Failed to define new Secret resource for Gateway")
+
+			// The following implementation will update the status
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+				Message: fmt.Sprintf("Failed to update Secret for the custom resource (%s): (%s)", gateway.Name, err)})
+
+			if err := r.Status().Update(ctx, gateway); err != nil {
+				logger.Error(err, "Failed to update Gateway status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
+		}
+
+		if err := r.Update(ctx, secret); err != nil {
+			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+				logger.Info("Conflict when updating Secret, retrying")
+				return ctrl.Result{Requeue: true}, nil
+			} else {
+				logger.Error(err, "Failed to update Secret")
+				return ctrl.Result{}, err
+			}
+		} else {
+			// Restart the Deployment if it exists
+			if foundDeploy != nil {
+				// Merge with existing annotations
+				annotations := foundDeploy.Spec.Template.GetAnnotations()
+				maps.Copy(annotations, map[string]string{
+					controllerName + "/tunnelTokenHash": sha256String(token),
+				})
+				foundDeploy.Spec.Template.SetAnnotations(annotations)
+
+				if err := r.Update(ctx, foundDeploy); err != nil {
+					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+						logger.Info("Conflict when updating Deployment, retrying")
+						return ctrl.Result{Requeue: true}, nil
+					} else {
+						logger.Error(err, "Failed to update Deployment")
+						return ctrl.Result{}, err
+					}
+				}
+			}
+		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// reconcileDeployment checks if the deployment already exists, if not create a new one
+func (r *GatewayReconciler) reconcileDeployment(ctx context.Context, gateway *gatewayv1.Gateway) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	found := &appsv1.Deployment{}
+	err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+	// TODO update existing deployment eg image changes
+	if err != nil && apierrors.IsNotFound(err) {
+		// Define a new deployment
+		dep, err := r.deploymentForGateway(ctx, gateway)
+		if err != nil {
+			logger.Error(err, "Failed to define new Deployment resource for Gateway")
+
+			// The following implementation will update the status
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+
+			if err := r.Status().Update(ctx, gateway); err != nil {
+				logger.Error(err, "Failed to update Gateway status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("Creating a new Deployment",
+			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		if err = r.Create(ctx, dep); err != nil {
+			logger.Error(err, "Failed to create new Deployment",
+				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			return ctrl.Result{}, err
+		}
+
+		// Deployment created successfully
+		// We will requeue the reconciliation so that we can ensure the state
+		// and move forward for the next operations
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	} else if err != nil {
+		logger.Error(err, "Failed to get Deployment")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	} else {
+		// Define a new deployment
+		dep, err := r.deploymentForGateway(ctx, gateway)
+		if err != nil {
+			logger.Error(err, "Failed to define new Deployment resource for Gateway")
+
+			// The following implementation will update the status
+			meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{Type: string(gatewayv1.GatewayConditionAccepted),
+				Status: metav1.ConditionFalse, Reason: "Reconciling", ObservedGeneration: gateway.Generation,
+				Message: fmt.Sprintf("Failed to update Deployment for the custom resource (%s): (%s)", gateway.Name, err)})
+
+			if err := r.Status().Update(ctx, gateway); err != nil {
+				logger.Error(err, "Failed to update Gateway status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
+		}
+
+		if err := r.Update(ctx, dep); err != nil {
+			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
+				logger.Info("Conflict when updating Deployment, retrying")
+				return ctrl.Result{Requeue: true}, nil
+			} else {
+				logger.Error(err, "Failed to update Deployment")
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
 // deploymentForGateway returns a Gateway Deployment object
 // deploys cloudflared
-func (r *GatewayReconciler) deploymentForGateway(
-	gateway *gatewayv1.Gateway, token string) (*appsv1.Deployment, error) {
+func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *gatewayv1.Gateway) (*appsv1.Deployment, error) {
+	logger := log.FromContext(ctx)
+
+	// Get the Operand image
+	image, err := imageForGateway()
+	if err != nil {
+		return nil, err
+	}
+
 	ls := labelsForGateway(gateway.Name)
-	replicas := int32(1)
 
 	readyProbe := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
@@ -608,10 +755,104 @@ func (r *GatewayReconciler) deploymentForGateway(
 		},
 	}
 
-	// Get the Operand image
-	image, err := imageForGateway()
-	if err != nil {
-		return nil, err
+	// Defaults
+	replicas := int32(1)
+	var nodeSelector map[string]string
+	affinity := &corev1.Affinity{
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: []corev1.NodeSelectorRequirement{
+							{
+								Key:      "kubernetes.io/arch",
+								Operator: "In",
+								Values:   []string{"amd64", "arm64"},
+							},
+							{
+								Key:      "kubernetes.io/os",
+								Operator: "In",
+								Values:   []string{"linux"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	var tolerations []corev1.Toleration
+	var containerResources corev1.ResourceRequirements
+	loglevel := "info"
+	// Apply custom config
+	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
+		parametersRef := gateway.Spec.Infrastructure.ParametersRef
+		if parametersRef.Kind != "ConfigMap" {
+			logger.Info("infrastructure.parametersRef Kind isn't ConfigMap")
+		} else {
+			configMap := &corev1.ConfigMap{}
+			err := r.Get(ctx, types.NamespacedName{Name: parametersRef.Name, Namespace: gateway.Namespace}, configMap)
+			if err != nil {
+				logger.Error(err, "Failed to get ConfigMap referenced in infrastructure.parametersRef")
+			} else {
+				// Update replicas
+				if s, ok := configMap.Data["replicas"]; ok {
+					i, err := strconv.ParseInt(s, 10, 32)
+					if err != nil {
+						logger.Error(err, "Failed to parse replicas field in infrastructure parameters")
+					} else {
+						replicas = int32(i)
+					}
+				}
+
+				// Add custom nodeSelector
+				if s, ok := configMap.Data["nodeSelector"]; ok {
+					err := yaml.UnmarshalStrict([]byte(s), &nodeSelector)
+					if err != nil {
+						logger.Error(err, "Failed to parse nodeSelector field in infrastructure parameters")
+					}
+				}
+
+				// Add custom nodeAffinity
+				if s, ok := configMap.Data["affinity"]; ok {
+					var customAffinity corev1.Affinity
+					err := yaml.UnmarshalStrict([]byte(s), &customAffinity)
+					if err != nil {
+						logger.Error(err, "Failed to parse affinity field in infrastructure parameters")
+					} else {
+						err := mergo.Merge(affinity, customAffinity, mergo.WithOverride)
+						if err != nil {
+							logger.Error(err, "Failed to merge custom Deployment affinity and defaults")
+						}
+					}
+				}
+
+				// Add custom tolerations
+				if s, ok := configMap.Data["tolerations"]; ok {
+					err := yaml.UnmarshalStrict([]byte(s), &tolerations)
+					if err != nil {
+						logger.Error(err, "Failed to parse tolerations field in infrastructure parameters")
+					}
+				}
+
+				// Add custom container resource requirements
+				if s, ok := configMap.Data["resources"]; ok {
+					err := yaml.UnmarshalStrict([]byte(s), &containerResources)
+					if err != nil {
+						logger.Error(err, "Failed to parse resources field in infrastructure parameters")
+					}
+				}
+
+				// Set cloudflared loglevel
+				if s, ok := configMap.Data["loglevel"]; ok {
+					levels := []string{"debug", "info", "warn", "error", "fatal"}
+					if !slices.Contains(levels, s) {
+						logger.Error(errors.New("invalid config"), "loglevel field in infrastructure parameters contains invalid value")
+					} else {
+						loglevel = s
+					}
+				}
+			}
+		}
 	}
 
 	dep := &appsv1.Deployment{
@@ -629,30 +870,11 @@ func (r *GatewayReconciler) deploymentForGateway(
 					Labels: ls,
 				},
 				Spec: corev1.PodSpec{
-					Affinity: &corev1.Affinity{
-						NodeAffinity: &corev1.NodeAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-								NodeSelectorTerms: []corev1.NodeSelectorTerm{
-									{
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "kubernetes.io/arch",
-												Operator: "In",
-												Values:   []string{"amd64", "arm64"},
-											},
-											{
-												Key:      "kubernetes.io/os",
-												Operator: "In",
-												Values:   []string{"linux"},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					NodeSelector: nodeSelector,
+					Affinity:     affinity,
+					Tolerations:  tolerations,
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: &[]bool{true}[0],
+						RunAsNonRoot: new(true),
 						// IMPORTANT: seccomProfile was introduced with Kubernetes 1.19
 						// If you are looking for to produce solutions to be supported
 						// on lower versions you must remove this option.
@@ -673,16 +895,28 @@ func (r *GatewayReconciler) deploymentForGateway(
 						// Ensure restrictive context for the container
 						// More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
 						SecurityContext: &corev1.SecurityContext{
-							RunAsNonRoot:             &[]bool{true}[0],
-							RunAsUser:                &[]int64{1001}[0],
-							AllowPrivilegeEscalation: &[]bool{false}[0],
+							RunAsNonRoot:             new(true),
+							RunAsUser:                new(int64(1001)),
+							AllowPrivilegeEscalation: new(false),
 							Capabilities: &corev1.Capabilities{
 								Drop: []corev1.Capability{
 									"ALL",
 								},
 							},
 						},
-						Args: []string{"tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run", "--token", token},
+						Args: []string{"tunnel", "run"},
+						Env: []corev1.EnvVar{
+							{Name: "NO_AUTOUPDATE", Value: "true"},
+							{Name: "TUNNEL_METRICS", Value: "0.0.0.0:2000"},
+							{Name: "TUNNEL_LOGLEVEL", Value: loglevel},
+						},
+						EnvFrom: []corev1.EnvFromSource{
+							{SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{Name: gateway.Name},
+								Optional:             new(false),
+							}},
+						},
+						Resources: containerResources,
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler:     readyProbe,
 							FailureThreshold: 3,
@@ -740,14 +974,46 @@ func imageForGateway() (string, error) {
 	return image, nil
 }
 
+// secretForGateway returns a Secret object containing the Cloudflare Tunnel token
+func (r *GatewayReconciler) secretForGateway(gateway *gatewayv1.Gateway, token string) (*corev1.Secret, error) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      gateway.Name,
+			Namespace: gateway.Namespace,
+		},
+		Type: corev1.SecretTypeOpaque,
+		StringData: map[string]string{
+			"TUNNEL_TOKEN": token,
+		},
+	}
+
+	// Set the ownerRef for the Secret
+	if err := ctrl.SetControllerReference(gateway, secret, r.Scheme); err != nil {
+		return nil, err
+	}
+	return secret, nil
+}
+
+// sha256String returns a sha256 hash of the input as a string
+func sha256String(s string) string {
+	h := sha256.New()
+	h.Write([]byte(s))
+	return string(h.Sum(nil))
+}
+
 // SetupWithManager sets up the controller with the Manager.
 // Note that the Deployment will be also watched in order to ensure its
 // desirable state on the cluster
 func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	pred := predicate.GenerationChangedPredicate{}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&gatewayv1.Gateway{}).
-		Owns(&appsv1.Deployment{}).
-		WithEventFilter(pred).
+		For(&gatewayv1.Gateway{}, builder.WithPredicates(
+			predicate.GenerationChangedPredicate{},
+		)).
+		Owns(&corev1.Secret{}, builder.WithPredicates(
+			predicate.ResourceVersionChangedPredicate{},
+		)).
+		Owns(&appsv1.Deployment{}, builder.WithPredicates(
+			predicate.GenerationChangedPredicate{},
+		)).
 		Complete(r)
 }
