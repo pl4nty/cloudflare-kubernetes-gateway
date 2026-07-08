@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * *"  # daily
+  pull_request:
 
 jobs:
   clean:
@@ -16,3 +17,15 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           image-names: "cloudflare-kubernetes-gateway-dev"
           cut-off: 4w
+
+  clean-main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: snok/container-retention-policy@v3.1.0
+        with:
+          account: user
+          token: ${{ secrets.GH_PACKAGES_PAT }}
+          image-names: "cloudflare-kubernetes-gateway"
+          image-tags: "!latest !v*"
+          cut-off: 1d
+          dry-run: true
