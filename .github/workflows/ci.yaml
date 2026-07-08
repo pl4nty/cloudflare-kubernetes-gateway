@@ -3,10 +3,13 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, unlabeled]
   workflow_dispatch:
 
 jobs:
   scan:
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,6 +24,8 @@ jobs:
           sarif_file: results.sarif
 
   test:
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,6 +41,8 @@ jobs:
       - run: make test
 
   e2e:
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
     runs-on: ubuntu-latest
     permissions:
       contents: read
