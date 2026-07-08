@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"maps"
@@ -544,8 +545,16 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 }
 
 // reconcileSecret checks if the secret already exists, if not create a new one
-func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewayv1.Gateway, token string) (ctrl.Result, error) {
+func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewayv1.Gateway, b64token string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+
+	var token string
+	if tokenBytes, err := base64.StdEncoding.DecodeString(b64token); err != nil {
+		logger.Error(err, "Failed to decode base64 token")
+		return ctrl.Result{}, err
+	} else {
+		token = string(tokenBytes)
+	}
 
 	foundDeploy := &appsv1.Deployment{}
 	if err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, foundDeploy); err != nil && apierrors.IsNotFound(err) {
