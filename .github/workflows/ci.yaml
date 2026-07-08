@@ -81,7 +81,7 @@ jobs:
         env:
           KO_DOCKER_REPO: ${{ steps.image_tag.outputs.IMAGE_NAME }}
       - name: Build and push image
-        run: ko build --bare ./cmd --tags ${{ steps.image_tag.outputs.IMAGE_TAG }}
+        run: ko build --bare --sbom=none ./cmd --tags ${{ steps.image_tag.outputs.IMAGE_TAG }}
         env:
           KO_DEFAULTBASEIMAGE: gcr.io/distroless/static:nonroot
           KO_DEFAULTPLATFORMS: linux/arm64,linux/amd64
