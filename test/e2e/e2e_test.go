@@ -13,10 +13,12 @@ import (
 )
 
 const namespace = "cloudflare-gateway"
-const imageName = "ghcr.io/pl4nty/cloudflare-kubernetes-gateway-dev"
 
 var _ = Describe("controller", Ordered, func() {
 	BeforeAll(func() {
+		By("installing the Gateway API")
+		Expect(utils.InstallGatewayAPI()).To(Succeed())
+
 		By("installing prometheus operator")
 		Expect(utils.InstallPrometheusOperator()).To(Succeed())
 
@@ -33,33 +35,37 @@ var _ = Describe("controller", Ordered, func() {
 			var controllerPodName string
 			var err error
 
-			version, err := utils.GetProjectVersion()
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			imageName, ok := os.LookupEnv("IMAGE_NAME")
+			Ω(ok).Should(BeTrueBecause("IMAGE_NAME env var should exist"))
+			imageTag, ok :=  os.LookupEnv("IMAGE_TAG")
+			Ω(ok).Should(BeTrueBecause("IMAGE_TAG env var should exist"))
 
 			// projectimage stores the name of the image used in the example
-			var projectimage = imageName + ":" + version
+			var projectimage = imageName + ":" + imageTag
 
 			By("checking if the manager(Operator) image exists locally")
 			cmd := exec.Command("make", "docker-image-ls", fmt.Sprintf("IMG=%s", projectimage))
 			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			By("loading the the manager(Operator) image on Kind")
 			err = utils.LoadImageToKindClusterWithName(projectimage)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			By("installing CRDs")
 			cmd = exec.Command("make", "install")
 			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			By("deploying the controller-manager")
 			cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectimage))
 			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			By("validating that the controller-manager pod is running as expected")
 			verifyControllerUp := func() error {
+				GinkgoHelper()
+
 				// Get pod name
 
 				cmd = exec.Command("kubectl", "get",
@@ -72,13 +78,13 @@ var _ = Describe("controller", Ordered, func() {
 				)
 
 				podOutput, err := utils.Run(cmd)
-				ExpectWithOffset(2, err).NotTo(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				podNames := utils.GetNonEmptyLines(string(podOutput))
 				if len(podNames) != 1 {
 					return fmt.Errorf("expect 1 controller pods running, but got %d", len(podNames))
 				}
 				controllerPodName = podNames[0]
-				ExpectWithOffset(2, controllerPodName).Should(ContainSubstring("controller-manager"))
+				Expect(controllerPodName).Should(ContainSubstring("controller-manager"))
 
 				// Validate pod status
 				cmd = exec.Command("kubectl", "get",
@@ -86,13 +92,13 @@ var _ = Describe("controller", Ordered, func() {
 					"-n", namespace,
 				)
 				status, err := utils.Run(cmd)
-				ExpectWithOffset(2, err).NotTo(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				if string(status) != "Running" {
 					return fmt.Errorf("controller pod in %s status", status)
 				}
 				return nil
 			}
-			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
+			Eventually(verifyControllerUp, time.Minute, time.Second).Should(Succeed())
 
 			By("creating the Gateway Secret")
 			cmd = exec.Command("kubectl", "create", "secret", "generic", "gateway-conformance",
@@ -100,12 +106,12 @@ var _ = Describe("controller", Ordered, func() {
 				"--from-literal=TOKEN="+os.Getenv("CLOUDFLARE_API_TOKEN"),
 				"-n", namespace)
 			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			By("creating the GatewayClass")
 			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/gatewayclass.yaml")
 			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

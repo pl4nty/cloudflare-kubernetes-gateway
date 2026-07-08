@@ -94,6 +94,7 @@ jobs:
       - run: make test-e2e
         continue-on-error: true
         env:
+          IMAGE_NAME: ${{ steps.image_tag.outputs.IMAGE_NAME }}
           IMAGE_TAG: ${{ steps.image_tag.outputs.IMAGE_TAG }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
