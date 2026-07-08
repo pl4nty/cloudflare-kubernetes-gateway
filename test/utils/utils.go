@@ -32,6 +32,8 @@ func InstallPrometheusOperator() error {
 
 // Run executes the provided command within this context
 func Run(cmd *exec.Cmd) ([]byte, error) {
+	GinkgoHelper()
+
 	dir, _ := GetProjectDir()
 	cmd.Dir = dir
 
