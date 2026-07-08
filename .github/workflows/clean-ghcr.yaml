@@ -28,4 +28,3 @@ jobs:
           image-names: "cloudflare-kubernetes-gateway"
           image-tags: "!latest !v*"
           cut-off: 1d
-          dry-run: true
