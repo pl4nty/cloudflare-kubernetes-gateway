@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pl4nty/cloudflare-kubernetes-gateway/test/utils"
-	"k8s.io/apimachinery/pkg/util/sets"
 	log "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/gateway-api/conformance"
 	conformancev1 "sigs.k8s.io/gateway-api/conformance/apis/v1"
@@ -29,9 +28,9 @@ func TestE2E(t *testing.T) {
 	log.SetLogger(GinkgoLogr)
 	opts := conformance.DefaultOptions(t)
 	opts.CleanupBaseResources = false
-	opts.ConformanceProfiles = sets.New(
+	opts.ConformanceProfiles = []suite.ConformanceProfileName{
 		suite.GatewayHTTPConformanceProfileName,
-	)
+	}
 	opts.Debug = true
 	opts.Implementation = conformancev1.Implementation{
 		Contact:      []string{"https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/new/choose"},
