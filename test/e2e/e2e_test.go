@@ -16,6 +16,9 @@ const namespace = "cloudflare-gateway"
 
 var _ = Describe("controller", Ordered, func() {
 	BeforeAll(func() {
+		By("installing the Gateway API")
+		Expect(utils.InstallGatewayAPI()).To(Succeed())
+
 		By("installing prometheus operator")
 		Expect(utils.InstallPrometheusOperator()).To(Succeed())
 

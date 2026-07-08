@@ -10,6 +10,9 @@ import (
 )
 
 const (
+	gatewayAPIVersion = "v1.6.0"
+	gatewayAPIURL     = "github.com/kubernetes-sigs/gateway-api//config/crd?ref=%s"
+
 	prometheusOperatorVersion = "v0.72.0"
 	prometheusOperatorURL     = "https://github.com/prometheus-operator/prometheus-operator/" +
 		"releases/download/%s/bundle.yaml"
@@ -20,6 +23,14 @@ const (
 
 func warnError(err error) {
 	fmt.Fprintf(GinkgoWriter, "warning: %v\n", err) //nolint:errcheck
+}
+
+// InstallGatewayAPI installs the Gateway API
+func InstallGatewayAPI() error {
+	url := fmt.Sprintf(gatewayAPIURL, gatewayAPIVersion)
+	cmd := exec.Command("kubectl", "apply", "--server-side", "-k", url)
+	_, err := Run(cmd)
+	return err
 }
 
 // InstallPrometheusOperator installs the prometheus Operator to be used to export the enabled metrics.
