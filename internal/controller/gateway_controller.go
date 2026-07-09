@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"slices"
 	"strconv"
@@ -60,7 +59,7 @@ type GatewayReconciler struct {
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;update;watch
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/finalizers,verbs=update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=update
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch;delete;patch
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=create;get;list;update;watch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
@@ -550,11 +549,30 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 	logger := log.FromContext(ctx)
 
 	foundDeploy := &appsv1.Deployment{}
+	var patch client.Patch
 	if err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, foundDeploy); err != nil && apierrors.IsNotFound(err) {
 		foundDeploy = nil
 	} else if err != nil {
 		logger.Error(err, "Failed to get Deployment")
 		return ctrl.Result{}, err
+	} else {
+		patchObj := &appsv1.Deployment{
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							annotationPrefix + "/tunnelTokenHash": sha256String(token),
+						},
+					},
+				},
+			},
+		}
+		patchBs, err := yaml.Marshal(patchObj)
+		if err != nil {
+			logger.Error(err, "Failed to prepare patch for Deployment")
+			return ctrl.Result{}, err
+		}
+		patch = client.RawPatch(types.StrategicMergePatchType, patchBs)
 	}
 
 	found := &corev1.Secret{}
@@ -587,24 +605,9 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 		} else {
 			// Restart the Deployment if it exists
 			if foundDeploy != nil {
-				// Merge with existing annotations
-				annotations := foundDeploy.Spec.Template.GetAnnotations()
-				if annotations == nil {
-					annotations = map[string]string{}
-				}
-				maps.Copy(annotations, map[string]string{
-					annotationPrefix + "/tunnelTokenHash": sha256String(token),
-				})
-				foundDeploy.Spec.Template.SetAnnotations(annotations)
-
-				if err := r.Update(ctx, foundDeploy); err != nil {
-					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-						logger.Info("Conflict when updating Deployment, retrying")
-						return ctrl.Result{Requeue: true}, nil
-					} else {
-						logger.Error(err, "Failed to update Deployment")
-						return ctrl.Result{}, err
-					}
+				if err := r.Patch(ctx, foundDeploy, patch); err != nil {
+					logger.Error(err, "Failed to patch Deployment")
+					return ctrl.Result{}, err
 				}
 			}
 		}
@@ -642,24 +645,9 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 		} else {
 			// Restart the Deployment if it exists
 			if foundDeploy != nil {
-				// Merge with existing annotations
-				annotations := foundDeploy.Spec.Template.GetAnnotations()
-				if annotations == nil {
-					annotations = map[string]string{}
-				}
-				maps.Copy(annotations, map[string]string{
-					annotationPrefix + "/tunnelTokenHash": sha256String(token),
-				})
-				foundDeploy.Spec.Template.SetAnnotations(annotations)
-
-				if err := r.Update(ctx, foundDeploy); err != nil {
-					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-						logger.Info("Conflict when updating Deployment, retrying")
-						return ctrl.Result{Requeue: true}, nil
-					} else {
-						logger.Error(err, "Failed to update Deployment")
-						return ctrl.Result{}, err
-					}
+				if err := r.Patch(ctx, foundDeploy, patch); err != nil {
+					logger.Error(err, "Failed to patch Deployment")
+					return ctrl.Result{}, err
 				}
 			}
 		}
