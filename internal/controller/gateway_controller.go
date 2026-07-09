@@ -556,28 +556,10 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 		logger.Error(err, "Failed to get Deployment")
 		return ctrl.Result{}, err
 	} else {
-		patchObj := &appsv1.Deployment{
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							annotationPrefix + "/tunnelTokenHash": sha256String(token),
-						},
-					},
-				},
-			},
-		}
-		patchYAML, err := yaml.Marshal(patchObj)
-		if err != nil {
-			logger.Error(err, "Failed to prepare patch for Deployment")
-			return ctrl.Result{}, err
-		}
-		patchJSON, err := yaml.YAMLToJSONStrict(patchYAML)
-		if err != nil {
-			logger.Error(err, "Failed to prepare patch for Deployment")
-			return ctrl.Result{}, err
-		}
-		patch = client.RawPatch(types.StrategicMergePatchType, patchJSON)
+		patchstr := `{"spec":{"template":{"metadata":{"annotations":{"` +
+			annotationPrefix + "/tunnelTokenHash" + `":"` +
+			sha256String(token) + `"}}}}}`
+		patch = client.RawPatch(types.StrategicMergePatchType, []byte(patchstr))
 	}
 
 	found := &corev1.Secret{}
