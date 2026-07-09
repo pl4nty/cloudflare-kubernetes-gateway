@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -1003,9 +1004,8 @@ func (r *GatewayReconciler) secretForGateway(gateway *gatewayv1.Gateway, token s
 
 // sha256String returns a sha256 hash of the input as a string
 func sha256String(s string) string {
-	h := sha256.New()
-	h.Write([]byte(s))
-	return string(h.Sum(nil))
+	ba := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(ba[:])
 }
 
 // SetupWithManager sets up the controller with the Manager.
