@@ -59,7 +59,7 @@ type GatewayReconciler struct {
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;update;watch
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/finalizers,verbs=update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways/status,verbs=update
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch;delete;patch
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;update;watch;delete
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=create;get;list;update;watch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
@@ -548,20 +548,6 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewayv1.Gateway, token string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	foundDeploy := &appsv1.Deployment{}
-	var patch client.Patch
-	if err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, foundDeploy); err != nil && apierrors.IsNotFound(err) {
-		foundDeploy = nil
-	} else if err != nil {
-		logger.Error(err, "Failed to get Deployment")
-		return ctrl.Result{}, err
-	} else {
-		patchstr := `{"spec":{"template":{"metadata":{"annotations":{"` +
-			annotationPrefix + "/tunnelTokenHash" + `":"` +
-			sha256String(token) + `"}}}}}`
-		patch = client.RawPatch(types.StrategicMergePatchType, []byte(patchstr))
-	}
-
 	found := &corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -589,14 +575,6 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 			logger.Error(err, "Failed to create new Secret",
 				"Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
 			return ctrl.Result{}, err
-		} else {
-			// Restart the Deployment if it exists
-			if foundDeploy != nil {
-				if err := r.Patch(ctx, foundDeploy, patch); err != nil {
-					logger.Error(err, "Failed to patch Deployment")
-					return ctrl.Result{}, err
-				}
-			}
 		}
 	} else if err != nil {
 		logger.Error(err, "Failed to get Secret")
@@ -628,14 +606,6 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 			} else {
 				logger.Error(err, "Failed to update Secret")
 				return ctrl.Result{}, err
-			}
-		} else {
-			// Restart the Deployment if it exists
-			if foundDeploy != nil {
-				if err := r.Patch(ctx, foundDeploy, patch); err != nil {
-					logger.Error(err, "Failed to patch Deployment")
-					return ctrl.Result{}, err
-				}
 			}
 		}
 	}
@@ -730,6 +700,13 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 	}
 
 	ls := labelsForGateway(gateway.Name)
+
+	// Updates pods when the tunnel token changes
+	annotations, err := r.annotationsForGateway(ctx, gateway)
+	if err != nil {
+		logger.Error(err, "Failed to get annotations for Deployment")
+		return nil, err
+	}
 
 	readyProbe := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
@@ -850,7 +827,8 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: ls,
+					Labels:      ls,
+					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
 					NodeSelector: nodeSelector,
@@ -955,6 +933,28 @@ func imageForGateway() (string, error) {
 		return "", fmt.Errorf("unable to find %s environment variable with the image", imageEnvVar)
 	}
 	return image, nil
+}
+
+// annotationsForGateway returns annotations to apply to gateway deployment pods
+func (r *GatewayReconciler) annotationsForGateway(ctx context.Context, gateway *gatewayv1.Gateway) (map[string]string, error) {
+	logger := log.FromContext(ctx)
+
+	found := &corev1.Secret{}
+	err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+	if err != nil {
+		logger.Error(err, "Failed to get tunnel token Secret")
+		return nil, err
+	}
+
+	if token, ok := found.Data["TUNNEL_TOKEN"]; !ok {
+		logger.Error(err, "Failed to read TUNNEL_TOKEN field in Secret "+gateway.Name)
+		return nil, err
+	} else {
+		annotations := map[string]string{
+			annotationPrefix + "/tunnelTokenHash": sha256String(string(token)),
+		}
+		return annotations, nil
+	}
 }
 
 // secretForGateway returns a Secret object containing the Cloudflare Tunnel token
