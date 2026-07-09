@@ -40,6 +40,7 @@ import (
 const gatewayClassFinalizer = "cfargotunnel.com/finalizer"
 const gatewayFinalizer = "cfargotunnel.com/finalizer"
 const controllerName = "github.com/pl4nty/cloudflare-kubernetes-gateway"
+const annotationPrefix = "cloudflare-kubernetes-gateway.tplant.com.au"
 
 // GatewayReconciler reconciles a Gateway object
 type GatewayReconciler struct {
@@ -591,7 +592,7 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 					annotations = map[string]string{}
 				}
 				maps.Copy(annotations, map[string]string{
-					controllerName + "/tunnelTokenHash": sha256String(token),
+					annotationPrefix + "/tunnelTokenHash": sha256String(token),
 				})
 				foundDeploy.Spec.Template.SetAnnotations(annotations)
 
@@ -646,7 +647,7 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 					annotations = map[string]string{}
 				}
 				maps.Copy(annotations, map[string]string{
-					controllerName + "/tunnelTokenHash": sha256String(token),
+					annotationPrefix + "/tunnelTokenHash": sha256String(token),
 				})
 				foundDeploy.Spec.Template.SetAnnotations(annotations)
 
