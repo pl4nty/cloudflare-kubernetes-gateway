@@ -567,12 +567,17 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 				},
 			},
 		}
-		patchBs, err := yaml.Marshal(patchObj)
+		patchYAML, err := yaml.Marshal(patchObj)
 		if err != nil {
 			logger.Error(err, "Failed to prepare patch for Deployment")
 			return ctrl.Result{}, err
 		}
-		patch = client.RawPatch(types.StrategicMergePatchType, patchBs)
+		patchJSON, err := yaml.YAMLToJSONStrict(patchYAML)
+		if err != nil {
+			logger.Error(err, "Failed to prepare patch for Deployment")
+			return ctrl.Result{}, err
+		}
+		patch = client.RawPatch(types.StrategicMergePatchType, patchJSON)
 	}
 
 	found := &corev1.Secret{}
