@@ -587,6 +587,9 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 			if foundDeploy != nil {
 				// Merge with existing annotations
 				annotations := foundDeploy.Spec.Template.GetAnnotations()
+				if annotations == nil {
+					annotations = map[string]string{}
+				}
 				maps.Copy(annotations, map[string]string{
 					controllerName + "/tunnelTokenHash": sha256String(token),
 				})
@@ -639,6 +642,9 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 			if foundDeploy != nil {
 				// Merge with existing annotations
 				annotations := foundDeploy.Spec.Template.GetAnnotations()
+				if annotations == nil {
+					annotations = map[string]string{}
+				}
 				maps.Copy(annotations, map[string]string{
 					controllerName + "/tunnelTokenHash": sha256String(token),
 				})
@@ -757,7 +763,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 
 	// Defaults
 	replicas := int32(1)
-	var nodeSelector map[string]string
+	nodeSelector := map[string]string{}
 	affinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
@@ -780,8 +786,8 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 			},
 		},
 	}
-	var tolerations []corev1.Toleration
-	var containerResources corev1.ResourceRequirements
+	tolerations := []corev1.Toleration{}
+	containerResources := corev1.ResourceRequirements{}
 	loglevel := "info"
 	// Apply custom config
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
