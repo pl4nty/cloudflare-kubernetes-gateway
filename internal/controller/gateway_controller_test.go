@@ -216,4 +216,12 @@ var _ = Describe("Gateway controller", func() {
 			// }, time.Minute, time.Second).Should(Succeed())
 		})
 	})
+
+	Context("Miscellaneous test", func() {
+		It("should compute a SHA256 hash of a string", func() {
+			instring := "test_string"
+			outstring := "4b641e9a923d1ea57e18fe41dcb543e2c4005c41ff210864a710b0fbb2654c11"
+			Ω(sha256String(instring)).Should(Equal(outstring))
+		})
+	})
 })
