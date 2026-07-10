@@ -11,7 +11,7 @@ Manage Kubernetes ingress traffic with [Cloudflare Tunnels](https://developers.c
 1. Install cloudflare-kubernetes-gateway with Kustomize:
    <!-- x-release-please-start-version -->
    ```sh
-   kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/default?ref=v0.9.0
+   kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/default?ref=v0.10.0
    ```
    <!-- x-release-please-end -->
 2. [Create a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with these permissions:
@@ -100,7 +100,7 @@ Manage Kubernetes ingress traffic with [Cloudflare Tunnels](https://developers.c
 7. (optional) Install Prometheus ServiceMonitors to collect controller and cloudflared metrics:
    <!-- x-release-please-start-version -->
    ```sh
-   kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/prometheus?ref=v0.9.0
+   kubectl apply -k github.com/pl4nty/cloudflare-kubernetes-gateway//config/prometheus?ref=v0.10.0
    ```
    <!-- x-release-please-end -->
 
