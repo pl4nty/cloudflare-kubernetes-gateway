@@ -10,31 +10,26 @@
 ### Features
 
 * add config for cloudflared ([#315](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/315)) ([815ed30](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/815ed302a0dae2e6ac9a92f3018b5e333c972f05))
+* store cloudflared token in a Secret ([#319](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/319)) ([13be19c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/13be19cfb83629b1c4953e68d91f93edfeaa61b9))
 
 
 ### Bug Fixes
 
 * bugs in [#315](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/315) and [#319](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/319) ([#342](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/342)) ([a78ece4](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/a78ece46895bed3ecbb76c09c53d568db290fdb0))
-* **deps:** update gateway api to v1.6.0 ([#313](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/313)) ([7a41576](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/7a41576e391829d2c43a30b47a765b87f77a469b))
-* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.5.0 ([#298](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/298)) ([2e91f0b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/2e91f0beccca15cb49be97bd8c3a3459639f0e37))
-* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.6.0 ([#305](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/305)) ([5486bd9](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5486bd942a0a373c08888ca7465b615a3ce9e1a5))
-* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.7.0 ([#345](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/345)) ([687ac2a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/687ac2a52e56e54791290844e190eb47f7468bd7))
-* **deps:** update module github.com/onsi/ginkgo/v2 to v2.30.0 ([#302](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/302)) ([d5d897d](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/d5d897dc69c10d6f442c03b273f08425a0bb75af))
-* **deps:** update module github.com/onsi/ginkgo/v2 to v2.31.0 ([#303](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/303)) ([f5a7d61](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f5a7d615e50f86d4e377cb0a436bcf95e2e80bb4))
-* **deps:** update module github.com/onsi/ginkgo/v2 to v2.32.0 ([#308](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/308)) ([42cec7a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/42cec7a1ba47445714ba860ffe793c643459c53f))
-* **deps:** update module github.com/onsi/gomega to v1.42.0 ([#304](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/304)) ([16097b0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/16097b0d5a7e37d65881e4a128f66f3feee0625a))
-* **deps:** update module github.com/onsi/gomega to v1.42.1 ([#309](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/309)) ([51d9cfa](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/51d9cfa2cf1effe128dbf5862c693af255ca6165))
-* **deps:** update module sigs.k8s.io/gateway-api/conformance to v1.6.0 ([#314](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/314)) ([71e536f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/71e536f278f91bf02eed8e3e13f519ac8aa10e20))
 * return meaningful errors from verifyAPIToken ([#324](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/324)) ([5ee0e03](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5ee0e036b8d8e300243a21381d6f37137d9104a6))
 * revert changes to conversion in [#300](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/300) ([#339](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/339)) ([155f71f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/155f71faf815768bb566c99d65ee88046cbbc4af))
-* safely cast to int32 ([#330](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/330)) ([f483b1f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f483b1f7aec134ab572fe3724e13f0486521cc91))
-* store cloudflared token in a Secret ([#319](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/319)) ([13be19c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/13be19cfb83629b1c4953e68d91f93edfeaa61b9))
 
 
 ### Continuous Integration
 
-* amend release please version ([f28f985](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f28f98506a4014eccb680fdbe283d9dd7a2351e9))
 * push e2e test containers to a separate repo ([#325](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/325)) ([43858cc](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/43858ccf433e29cdbdaf1a33053e04febcbd832d))
+
+
+### Dependencies
+
+* update gateway api to v1.6.0 ([#313](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/313)) ([7a41576](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/7a41576e391829d2c43a30b47a765b87f77a469b))
+* update module github.com/cloudflare/cloudflare-go/v7 to v7.7.0 ([#298](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/298), [#305](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/305), [#345](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/345)) ([2e91f0b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/2e91f0beccca15cb49be97bd8c3a3459639f0e37), [5486bd9](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5486bd942a0a373c08888ca7465b615a3ce9e1a5), [687ac2a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/687ac2a52e56e54791290844e190eb47f7468bd7))
+* update module sigs.k8s.io/gateway-api/conformance to v1.6.0 ([#314](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/314)) ([71e536f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/71e536f278f91bf02eed8e3e13f519ac8aa10e20))
 
 ## [0.9.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.8.3...v0.9.0) (2026-06-10)
 
