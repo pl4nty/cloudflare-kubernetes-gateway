@@ -3,9 +3,9 @@ package controller
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"slices"
 	"strconv"
@@ -40,6 +40,7 @@ import (
 const gatewayClassFinalizer = "cfargotunnel.com/finalizer"
 const gatewayFinalizer = "cfargotunnel.com/finalizer"
 const controllerName = "github.com/pl4nty/cloudflare-kubernetes-gateway"
+const annotationPrefix = "cloudflare-kubernetes-gateway.tplant.com.au"
 
 // GatewayReconciler reconciles a Gateway object
 type GatewayReconciler struct {
@@ -547,14 +548,6 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewayv1.Gateway, token string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	foundDeploy := &appsv1.Deployment{}
-	if err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, foundDeploy); err != nil && apierrors.IsNotFound(err) {
-		foundDeploy = nil
-	} else if err != nil {
-		logger.Error(err, "Failed to get Deployment")
-		return ctrl.Result{}, err
-	}
-
 	found := &corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -582,26 +575,6 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 			logger.Error(err, "Failed to create new Secret",
 				"Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
 			return ctrl.Result{}, err
-		} else {
-			// Restart the Deployment if it exists
-			if foundDeploy != nil {
-				// Merge with existing annotations
-				annotations := foundDeploy.Spec.Template.GetAnnotations()
-				maps.Copy(annotations, map[string]string{
-					controllerName + "/tunnelTokenHash": sha256String(token),
-				})
-				foundDeploy.Spec.Template.SetAnnotations(annotations)
-
-				if err := r.Update(ctx, foundDeploy); err != nil {
-					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-						logger.Info("Conflict when updating Deployment, retrying")
-						return ctrl.Result{Requeue: true}, nil
-					} else {
-						logger.Error(err, "Failed to update Deployment")
-						return ctrl.Result{}, err
-					}
-				}
-			}
 		}
 	} else if err != nil {
 		logger.Error(err, "Failed to get Secret")
@@ -633,26 +606,6 @@ func (r *GatewayReconciler) reconcileSecret(ctx context.Context, gateway *gatewa
 			} else {
 				logger.Error(err, "Failed to update Secret")
 				return ctrl.Result{}, err
-			}
-		} else {
-			// Restart the Deployment if it exists
-			if foundDeploy != nil {
-				// Merge with existing annotations
-				annotations := foundDeploy.Spec.Template.GetAnnotations()
-				maps.Copy(annotations, map[string]string{
-					controllerName + "/tunnelTokenHash": sha256String(token),
-				})
-				foundDeploy.Spec.Template.SetAnnotations(annotations)
-
-				if err := r.Update(ctx, foundDeploy); err != nil {
-					if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
-						logger.Info("Conflict when updating Deployment, retrying")
-						return ctrl.Result{Requeue: true}, nil
-					} else {
-						logger.Error(err, "Failed to update Deployment")
-						return ctrl.Result{}, err
-					}
-				}
 			}
 		}
 	}
@@ -748,6 +701,13 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 
 	ls := labelsForGateway(gateway.Name)
 
+	// Updates pods when the tunnel token changes
+	annotations, err := r.annotationsForGateway(ctx, gateway)
+	if err != nil {
+		logger.Error(err, "Failed to get annotations for Deployment")
+		return nil, err
+	}
+
 	readyProbe := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Path: "/ready",
@@ -757,7 +717,7 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 
 	// Defaults
 	replicas := int32(1)
-	var nodeSelector map[string]string
+	nodeSelector := map[string]string{}
 	affinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
@@ -780,8 +740,8 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 			},
 		},
 	}
-	var tolerations []corev1.Toleration
-	var containerResources corev1.ResourceRequirements
+	tolerations := []corev1.Toleration{}
+	containerResources := corev1.ResourceRequirements{}
 	loglevel := "info"
 	// Apply custom config
 	if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
@@ -867,7 +827,8 @@ func (r *GatewayReconciler) deploymentForGateway(ctx context.Context, gateway *g
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: ls,
+					Labels:      ls,
+					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
 					NodeSelector: nodeSelector,
@@ -974,6 +935,28 @@ func imageForGateway() (string, error) {
 	return image, nil
 }
 
+// annotationsForGateway returns annotations to apply to gateway deployment pods
+func (r *GatewayReconciler) annotationsForGateway(ctx context.Context, gateway *gatewayv1.Gateway) (map[string]string, error) {
+	logger := log.FromContext(ctx)
+
+	found := &corev1.Secret{}
+	err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
+	if err != nil {
+		logger.Error(err, "Failed to get tunnel token Secret")
+		return nil, err
+	}
+
+	if token, ok := found.Data["TUNNEL_TOKEN"]; !ok {
+		logger.Error(err, "Failed to read TUNNEL_TOKEN field in Secret "+gateway.Name)
+		return nil, err
+	} else {
+		annotations := map[string]string{
+			annotationPrefix + "/tunnelTokenHash": sha256String(string(token)),
+		}
+		return annotations, nil
+	}
+}
+
 // secretForGateway returns a Secret object containing the Cloudflare Tunnel token
 func (r *GatewayReconciler) secretForGateway(gateway *gatewayv1.Gateway, token string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{
@@ -996,9 +979,8 @@ func (r *GatewayReconciler) secretForGateway(gateway *gatewayv1.Gateway, token s
 
 // sha256String returns a sha256 hash of the input as a string
 func sha256String(s string) string {
-	h := sha256.New()
-	h.Write([]byte(s))
-	return string(h.Sum(nil))
+	ba := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(ba[:])
 }
 
 // SetupWithManager sets up the controller with the Manager.
