@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.10.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.9.0...v0.10.0) (2026-07-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* push e2e test containers to a separate repo ([#325](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/325))
+
+### Features
+
+* add config for cloudflared ([#315](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/315)) ([815ed30](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/815ed302a0dae2e6ac9a92f3018b5e333c972f05))
+* store cloudflared token in a Secret ([#319](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/319)) ([13be19c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/13be19cfb83629b1c4953e68d91f93edfeaa61b9))
+
+
+### Bug Fixes
+
+* bugs in [#315](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/315) and [#319](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/319) ([#342](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/342)) ([a78ece4](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/a78ece46895bed3ecbb76c09c53d568db290fdb0))
+* return meaningful errors from verifyAPIToken ([#324](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/324)) ([5ee0e03](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5ee0e036b8d8e300243a21381d6f37137d9104a6))
+* revert changes to conversion in [#300](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/300) ([#339](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/339)) ([155f71f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/155f71faf815768bb566c99d65ee88046cbbc4af))
+
+
+### Continuous Integration
+
+* push e2e test containers to a separate repo ([#325](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/325)) ([43858cc](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/43858ccf433e29cdbdaf1a33053e04febcbd832d))
+
+
+### Dependencies
+
+* update gateway api to v1.6.0 ([#313](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/313)) ([7a41576](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/7a41576e391829d2c43a30b47a765b87f77a469b))
+* update module github.com/cloudflare/cloudflare-go/v7 to v7.7.0 ([#298](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/298), [#305](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/305), [#345](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/345)) ([2e91f0b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/2e91f0beccca15cb49be97bd8c3a3459639f0e37), [5486bd9](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/5486bd942a0a373c08888ca7465b615a3ce9e1a5), [687ac2a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/687ac2a52e56e54791290844e190eb47f7468bd7))
+* update module sigs.k8s.io/gateway-api/conformance to v1.6.0 ([#314](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/314)) ([71e536f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/71e536f278f91bf02eed8e3e13f519ac8aa10e20))
+
 ## [0.9.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.8.3...v0.9.0) (2026-06-10)
 
 
