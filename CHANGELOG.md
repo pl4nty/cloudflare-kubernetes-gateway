@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.0...v0.10.1) (2026-07-11)
+
+
+### Bug Fixes
+
+* disable keep-alive between cloudflared and origin ([#346](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/346)) ([4eef167](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/4eef16763c517bd44c140e81a03b4a69de750d81))
+
 ## [0.10.0](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.9.0...v0.10.0) (2026-07-10)
 
 
