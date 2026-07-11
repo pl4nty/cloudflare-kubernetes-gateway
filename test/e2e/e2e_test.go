@@ -37,7 +37,7 @@ var _ = Describe("controller", Ordered, func() {
 
 			imageName, ok := os.LookupEnv("IMAGE_NAME")
 			Ω(ok).Should(BeTrueBecause("IMAGE_NAME env var should exist"))
-			imageTag, ok :=  os.LookupEnv("IMAGE_TAG")
+			imageTag, ok := os.LookupEnv("IMAGE_TAG")
 			Ω(ok).Should(BeTrueBecause("IMAGE_TAG env var should exist"))
 
 			// projectimage stores the name of the image used in the example
