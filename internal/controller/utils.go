@@ -15,6 +15,8 @@ import (
 	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+// const controllerName declared in gateway_controller.go
+
 func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName string) (string, *cloudflare.Client, error) {
 	logger := log.FromContext(ctx)
 
@@ -23,7 +25,7 @@ func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName st
 		logger.Error(err, "Failed to get gatewayclass")
 		return "", nil, err
 	}
-	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {
+	if gatewayClass.Spec.ControllerName != controllerName {
 		return "", nil, nil
 	}
 
@@ -55,7 +57,7 @@ func GetCloudflareAPIToken(ctx context.Context, c client.Client, gatewayClassNam
 		logger.Error(err, "Failed to get gatewayclass")
 		return "", err
 	}
-	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {
+	if gatewayClass.Spec.ControllerName != controllerName {
 		return "", nil
 	}
 
