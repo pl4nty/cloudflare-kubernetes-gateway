@@ -612,13 +612,9 @@ func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tun
 		// Tunnel config exists but needs modification
 		// Parse and send the modified config to the HTTP endpoint
 		// no good way to convert the Cloudflare Get type to the Put type
-		getRespG, err := gabs.ParseJSON([]byte(getResp.JSON.Config.Raw()))
+		getRespS := `{"config":` + getResp.JSON.Config.Raw() + `}`
+		putParamsG, err := gabs.ParseJSON([]byte(getRespS))
 		if err != nil {
-			logger.Error(err, "Failed to parse tunnel config as JSON")
-			return ctrl.Result{}, err
-		}
-		putParamsG := gabs.New()
-		if _, err := putParamsG.Set(getRespG, "config"); err != nil {
 			logger.Error(err, "Failed to parse tunnel config as JSON")
 			return ctrl.Result{}, err
 		}
