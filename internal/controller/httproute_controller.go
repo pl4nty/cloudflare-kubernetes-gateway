@@ -219,6 +219,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			AccountID: cloudflare.String(account),
 			Config: cloudflare.F(zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig{
 				Ingress: cloudflare.F(ingress),
+				// FIX: clobbers originRequest config
 			},
 			),
 		})
