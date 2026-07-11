@@ -1,13 +1,11 @@
 package controller
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"slices"
 	"strconv"
@@ -627,8 +625,7 @@ func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tun
 
 		// Send config to the HTTP endpoint
 		apiPath := fmt.Sprintf("/accounts/%s/cfd_tunnel/%s/configurations", accountID, tunnelID)
-		var putResp *zero_trust.TunnelCloudflaredConfigurationUpdateResponse
-		if err := api.Put(ctx, apiPath, putParamsG.Bytes(), putResp); err != nil {
+		if err := api.Put(ctx, apiPath, putParamsG.Bytes(), nil); err != nil {
 			logger.Error(err, "Failed to update tunnel config via HTTP")
 			return ctrl.Result{}, err
 		}
