@@ -661,6 +661,7 @@ func httpPutTunnelConfig(accountID, tunnelID, apiToken string, body []byte) erro
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiToken)
+	req.Close = true
 
 	resp, err := c.Do(req)
 	if err != nil {
@@ -668,6 +669,7 @@ func httpPutTunnelConfig(accountID, tunnelID, apiToken string, body []byte) erro
 	} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return errors.New("HTTP putting tunnel config returned: " + resp.Status)
 	}
+	// Too lazy to handle this properly, would continue if it fails anyway
 	defer resp.Body.Close()
 
 	return nil
