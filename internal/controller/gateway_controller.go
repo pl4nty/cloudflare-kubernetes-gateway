@@ -382,7 +382,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Update the tunnel config
-	if apiToken, err := GetCloudflareAPIToken(ctx, r.Client, gatewayClass.Name); err != nil {
+	if _, apiToken, err := ParseCloudflareAPISecret(ctx, r.Client, gatewayClass.Name); err != nil {
 		logger.Error(err, "Failed to get Cloudflare API token")
 		return ctrl.Result{}, err
 	} else {
