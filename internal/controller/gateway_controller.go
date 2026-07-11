@@ -383,6 +383,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if result, err := setTunnelConfig(ctx, api, account, tunnelID); err != nil {
 		return result, err
 	}
+	// FIX: reconcile HTTPRoutes here
 
 	// Get the tunnel token
 	res, err := api.ZeroTrust.Tunnels.Cloudflared.Token.Get(ctx, tunnelID, zero_trust.TunnelCloudflaredTokenGetParams{
@@ -585,6 +586,7 @@ func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tun
 				logger.Error(err, "Failed to update tunnel config")
 				return ctrl.Result{}, err
 			}
+			logger.Info("Updated Tunnel originRequest config")
 			return ctrl.Result{}, nil
 		} else {
 			logger.Error(err, "Failed to get tunnel config")
@@ -597,6 +599,7 @@ func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tun
 			logger.Error(err, "Failed to update tunnel config")
 			return ctrl.Result{}, err
 		}
+		logger.Info("Updated Tunnel originRequest config")
 		return ctrl.Result{}, nil
 	} else if verifyTunnelConfig(getResp.Config) {
 		// Existing tunnel config already correct
@@ -625,6 +628,7 @@ func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tun
 			return ctrl.Result{}, err
 		}
 
+		logger.Info("Updated Tunnel originRequest config")
 		return ctrl.Result{}, nil
 	}
 }
