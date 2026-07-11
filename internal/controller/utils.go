@@ -18,7 +18,7 @@ import (
 // const controllerName declared in gateway_controller.go
 
 func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName string) (string, *cloudflare.Client, error) {
-	accountID, apiToken, err := ParseCloudflareAPISecret(ctx, c, gatewayClassName)
+	accountID, apiToken, err := GetCloudflareAPICredentials(ctx, c, gatewayClassName)
 	if err != nil {
 		return "", nil, err
 	}
@@ -26,7 +26,7 @@ func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName st
 	return accountID, api, nil
 }
 
-func ParseCloudflareAPISecret(ctx context.Context, c client.Client, gatewayClassName string) (string, string, error) {
+func GetCloudflareAPICredentials(ctx context.Context, c client.Client, gatewayClassName string) (string, string, error) {
 	logger := log.FromContext(ctx)
 
 	gatewayClass := &gw.GatewayClass{}
