@@ -626,7 +626,9 @@ func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tun
 		}
 
 		// Send config to the HTTP endpoint
-		if err := httpPutTunnelConfig(accountID, tunnelID, apiToken, putParamsG.Bytes()); err != nil {
+		apiPath := fmt.Sprintf("/accounts/%s/cfd_tunnel/%s/configurations", accountID, tunnelID)
+		var putResp *zero_trust.TunnelCloudflaredConfigurationUpdateResponse
+		if err := api.Put(ctx, apiPath, putParamsG.Bytes(), putResp); err != nil {
 			logger.Error(err, "Failed to update tunnel config via HTTP")
 			return ctrl.Result{}, err
 		}
@@ -639,36 +641,6 @@ func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tun
 func verifyTunnelConfig(c zero_trust.TunnelCloudflaredConfigurationGetResponseConfig) bool {
 	keepAliveConnections := int64(-1)
 	return c.OriginRequest.KeepAliveConnections == keepAliveConnections
-}
-
-// httpPutTunnelConfig updates the Cloudflare tunnel config via the HTTP endpoint
-func httpPutTunnelConfig(accountID, tunnelID, apiToken string, body []byte) error {
-	apiBaseURL := "https://api.cloudflare.com/client/v4"
-	apiEndpoint := fmt.Sprintf("/accounts/%s/cfd_tunnel/%s/configurations", accountID, tunnelID)
-
-	c := &http.Client{}
-	req, err := http.NewRequest(
-		"PUT",
-		apiBaseURL+apiEndpoint,
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiToken)
-	req.Close = true
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return err
-	} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errors.New("HTTP putting tunnel config returned: " + resp.Status)
-	}
-	// Too lazy to handle this properly, would continue if it fails anyway
-	defer resp.Body.Close()
-
-	return nil
 }
 
 // reconcileSecret checks if the secret already exists, if not create a new one
