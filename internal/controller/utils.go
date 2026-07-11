@@ -15,31 +15,20 @@ import (
 	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-// const controllerName declared in gateway_controller.go
-
 func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName string) (string, *cloudflare.Client, error) {
-	accountID, apiToken, err := GetCloudflareAPICredentials(ctx, c, gatewayClassName)
-	if err != nil {
-		return "", nil, err
-	}
-	api := cloudflare.NewClient(option.WithAPIToken(apiToken))
-	return accountID, api, nil
-}
-
-func GetCloudflareAPICredentials(ctx context.Context, c client.Client, gatewayClassName string) (string, string, error) {
 	logger := log.FromContext(ctx)
 
 	gatewayClass := &gw.GatewayClass{}
 	if err := c.Get(ctx, types.NamespacedName{Name: gatewayClassName}, gatewayClass); err != nil {
 		logger.Error(err, "Failed to get gatewayclass")
-		return "", "", err
+		return "", nil, err
 	}
 	if gatewayClass.Spec.ControllerName != controllerName {
-		return "", "", nil
+		return "", nil, nil
 	}
 
 	if gatewayClass.Spec.ParametersRef == nil {
-		return "", "", errors.New("GatewayClass is missing a Secret ParameterRef")
+		return "", nil, errors.New("GatewayClass is missing a Secret ParameterRef")
 	}
 
 	secretRef := types.NamespacedName{
@@ -49,10 +38,11 @@ func GetCloudflareAPICredentials(ctx context.Context, c client.Client, gatewayCl
 	secret := &core.Secret{}
 	if err := c.Get(ctx, secretRef, secret); err != nil {
 		logger.Error(err, "unable to fetch Secret from GatewayClass ParameterRef")
-		return "", "", err
+		return "", nil, err
 	}
 
-	accountID := strings.TrimSpace(string(secret.Data["ACCOUNT_ID"]))
-	apiToken := strings.TrimSpace(string(secret.Data["TOKEN"]))
-	return accountID, apiToken, nil
+	account := strings.TrimSpace(string(secret.Data["ACCOUNT_ID"]))
+	api := cloudflare.NewClient(option.WithAPIToken(strings.TrimSpace(string(secret.Data["TOKEN"]))))
+
+	return account, api, nil
 }
