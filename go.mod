@@ -7,6 +7,7 @@ toolchain go1.26.5
 require (
 	dario.cat/mergo v1.0.2
 	fortio.org/safecast v1.2.0
+	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/cloudflare/cloudflare-go/v7 v7.7.0
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
