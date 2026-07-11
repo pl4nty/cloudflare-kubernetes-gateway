@@ -380,13 +380,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Update the tunnel config
-	if _, apiToken, err := GetCloudflareAPICredentials(ctx, r.Client, gatewayClass.Name); err != nil {
-		logger.Error(err, "Failed to get Cloudflare API token")
-		return ctrl.Result{}, err
-	} else {
-		if result, err := setTunnelConfig(ctx, api, account, tunnelID, apiToken); err != nil {
-			return result, err
-		}
+	if result, err := setTunnelConfig(ctx, api, account, tunnelID); err != nil {
+		return result, err
 	}
 
 	// Get the tunnel token
@@ -556,7 +551,7 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 }
 
 // setTunnelConfig sets the desired config for the Cloudflare tunnel
-func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tunnelID, apiToken string) (ctrl.Result, error) {
+func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tunnelID string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	// Define the default tunnel config to send
