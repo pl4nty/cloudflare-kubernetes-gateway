@@ -1,11 +1,13 @@
 package controller
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"slices"
 	"strconv"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"dario.cat/mergo"
+	"github.com/Jeffail/gabs/v2"
 
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/zero_trust"
@@ -378,6 +381,16 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		tunnelID = tunnels.Result[0].ID
 	}
 
+	// Update the tunnel config
+	if apiToken, err := GetCloudflareAPIToken(ctx, r.Client, gatewayClass.Name); err != nil {
+		logger.Error(err, "Failed to get Cloudflare API token")
+		return ctrl.Result{}, err
+	} else {
+		if result, err := setTunnelConfig(ctx, api, account, tunnelID, apiToken); err != nil {
+			return result, err
+		}
+	}
+
 	// Get the tunnel token
 	res, err := api.ZeroTrust.Tunnels.Cloudflared.Token.Get(ctx, tunnelID, zero_trust.TunnelCloudflaredTokenGetParams{
 		AccountID: cloudflare.String(account),
@@ -540,6 +553,122 @@ func (r *GatewayReconciler) doFinalizerOperationsForGateway(ctx context.Context,
 	// The following implementation will raise an event
 	r.Recorder.Eventf(gateway, nil, "Warning", "Deleting", "Deleted",
 		"Gateway %s is being deleted from the namespace %s", gateway.Name, gateway.Namespace)
+
+	return nil
+}
+
+// setTunnelConfig sets the desired config for the Cloudflare tunnel
+func setTunnelConfig(ctx context.Context, api *cloudflare.Client, accountID, tunnelID, apiToken string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	// Define the default tunnel config to send
+	defaultTunnelConfig := zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfig{
+		Ingress: cloudflare.F([]zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigIngress{
+			{
+				Service: cloudflare.String("http_status:404"),
+			},
+		}),
+		OriginRequest: cloudflare.F(zero_trust.TunnelCloudflaredConfigurationUpdateParamsConfigOriginRequest{
+			// Disable HTTP keep alive so Services can properly balance between replicas
+			KeepAliveConnections: cloudflare.Int(-1),
+		}),
+	}
+	defaultUpdateParams := zero_trust.TunnelCloudflaredConfigurationUpdateParams{
+		AccountID: cloudflare.String(accountID),
+		Config:    cloudflare.F(defaultTunnelConfig),
+	}
+
+	// Get the existing config
+	getResp, err := api.ZeroTrust.Tunnels.Cloudflared.Configurations.Get(ctx, tunnelID,
+		zero_trust.TunnelCloudflaredConfigurationGetParams{
+			AccountID: cloudflare.String(accountID),
+		})
+	if err != nil {
+		var apierr *cloudflare.Error
+		if errors.As(err, &apierr); apierr.StatusCode == 404 {
+			// Tunnel config doesn't exist, send default
+			_, err := api.ZeroTrust.Tunnels.Cloudflared.Configurations.Update(ctx, tunnelID, defaultUpdateParams)
+			if err != nil {
+				logger.Error(err, "Failed to update tunnel config")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		} else {
+			logger.Error(err, "Failed to get tunnel config")
+			return ctrl.Result{}, err
+		}
+	} else if getResp.JSON.Config.IsNull() {
+		// Tunnel config doesn't exist, send default
+		_, err := api.ZeroTrust.Tunnels.Cloudflared.Configurations.Update(ctx, tunnelID, defaultUpdateParams)
+		if err != nil {
+			logger.Error(err, "Failed to update tunnel config")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	} else if verifyTunnelConfig(getResp.Config) {
+		// Existing tunnel config already correct
+		return ctrl.Result{}, nil
+	} else {
+		// Tunnel config exists but needs modification
+		// Parse and send the modified config to the HTTP endpoint
+		// no good way to convert the Cloudflare Get type to the Put type
+		getRespG, err := gabs.ParseJSON([]byte(getResp.JSON.Config.Raw()))
+		if err != nil {
+			logger.Error(err, "Failed to parse tunnel config as JSON")
+			return ctrl.Result{}, err
+		}
+		putParamsG := gabs.New()
+		if _, err := putParamsG.Set(getRespG, "config"); err != nil {
+			logger.Error(err, "Failed to parse tunnel config as JSON")
+			return ctrl.Result{}, err
+		}
+
+		// Modify config
+		if _, err := putParamsG.SetP(-1, "config.originRequest.keepAliveConnections"); err != nil {
+			logger.Error(err, "Failed to modify existing config as JSON")
+			return ctrl.Result{}, err
+		}
+
+		// Send config to the HTTP endpoint
+		if err := httpPutTunnelConfig(accountID, tunnelID, apiToken, putParamsG.Bytes()); err != nil {
+			logger.Error(err, "Failed to update tunnel config via HTTP")
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+	}
+}
+
+// verifyTunnelConfig verifies that the existing Cloudflare tunnel config is correct
+func verifyTunnelConfig(c zero_trust.TunnelCloudflaredConfigurationGetResponseConfig) bool {
+	keepAliveConnections := int64(-1)
+	return c.OriginRequest.KeepAliveConnections == keepAliveConnections
+}
+
+// httpPutTunnelConfig updates the Cloudflare tunnel config via the HTTP endpoint
+func httpPutTunnelConfig(accountID, tunnelID, apiToken string, body []byte) error {
+	apiBaseURL := "https://api.cloudflare.com/client/v4"
+	apiEndpoint := fmt.Sprintf("/accounts/%s/cfd_tunnel/%s/configurations", accountID, tunnelID)
+
+	c := &http.Client{}
+	req, err := http.NewRequest(
+		"PUT",
+		apiBaseURL+apiEndpoint,
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiToken)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return errors.New("HTTP putting tunnel config returned: " + resp.Status)
+	}
+	defer resp.Body.Close()
 
 	return nil
 }

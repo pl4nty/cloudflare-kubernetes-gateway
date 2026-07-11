@@ -46,3 +46,32 @@ func InitCloudflareAPI(ctx context.Context, c client.Client, gatewayClassName st
 
 	return account, api, nil
 }
+
+func GetCloudflareAPIToken(ctx context.Context, c client.Client, gatewayClassName string) (string, error) {
+	logger := log.FromContext(ctx)
+
+	gatewayClass := &gw.GatewayClass{}
+	if err := c.Get(ctx, types.NamespacedName{Name: gatewayClassName}, gatewayClass); err != nil {
+		logger.Error(err, "Failed to get gatewayclass")
+		return "", err
+	}
+	if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {
+		return "", nil
+	}
+
+	if gatewayClass.Spec.ParametersRef == nil {
+		return "", errors.New("GatewayClass is missing a Secret ParameterRef")
+	}
+
+	secretRef := types.NamespacedName{
+		Namespace: string(*gatewayClass.Spec.ParametersRef.Namespace),
+		Name:      gatewayClass.Spec.ParametersRef.Name,
+	}
+	secret := &core.Secret{}
+	if err := c.Get(ctx, secretRef, secret); err != nil {
+		logger.Error(err, "unable to fetch Secret from GatewayClass ParameterRef")
+		return "", err
+	}
+
+	return strings.TrimSpace(string(secret.Data["TOKEN"])), nil
+}
