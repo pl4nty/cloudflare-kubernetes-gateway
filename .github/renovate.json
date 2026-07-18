@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "github>pl4nty/.github"
   ],
   "postUpdateOptions": [
     "gomodTidy"
