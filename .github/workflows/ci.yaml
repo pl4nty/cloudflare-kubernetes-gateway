@@ -16,10 +16,10 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v7.0.0
-      - uses: securego/gosec@v2.27.1
+      - uses: securego/gosec@v2.28.0
         with:
           args: "-no-fail -fmt sarif -out results.sarif ./..."
-      - uses: github/codeql-action/upload-sarif@v4.37.0
+      - uses: github/codeql-action/upload-sarif@v4.37.1
         with:
           sarif_file: results.sarif
 
@@ -32,7 +32,7 @@ jobs:
       checks: write
     steps:
       - uses: actions/checkout@v7.0.0
-      - uses: actions/setup-go@v6.5.0
+      - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
 
@@ -67,7 +67,7 @@ jobs:
           fi
           echo "IMAGE_NAME=ghcr.io/pl4nty/cloudflare-kubernetes-gateway-dev" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-go@v6.5.0
+      - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
 
