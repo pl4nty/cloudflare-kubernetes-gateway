@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors -->
+<!-- SPDX-License-Identifier: MIT -->
 # Changelog
 
 ## [0.10.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.0...v0.10.1) (2026-07-11)

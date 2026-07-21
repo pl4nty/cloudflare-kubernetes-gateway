@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors
+// SPDX-License-Identifier: MIT
 module github.com/pl4nty/cloudflare-kubernetes-gateway
 
 go 1.26.0

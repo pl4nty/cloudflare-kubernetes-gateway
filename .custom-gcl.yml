@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors
+# SPDX-License-Identifier: MIT
+
 # This file configures golangci-lint with module plugins.
 # When you run 'make lint', it will automatically build a custom golangci-lint binary
 # with all the plugins listed below.

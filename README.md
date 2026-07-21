@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors -->
+<!-- SPDX-License-Identifier: MIT -->
 # Cloudflare Kubernetes Gateway
 
 Manage Kubernetes ingress traffic with [Cloudflare Tunnels](https://developers.cloudflare.com/tunnel/) via the [Gateway API](https://gateway-api.sigs.k8s.io/).
@@ -216,3 +218,9 @@ See also:
 - [Assign Pods to Nodes](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)
 - [Assign Pods to Nodes using Node Affinity](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/)
 - [Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+
+## License
+
+Copyright (c) 2023-2026 Tom Plant, Elias Elwyn, and contributors, [MIT License](./LICENSES/MIT.txt).
+
+This project is compliant with [REUSE v3.3](https://reuse.software/spec-3.3/).
