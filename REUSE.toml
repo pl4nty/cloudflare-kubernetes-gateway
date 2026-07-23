@@ -1,0 +1,10 @@
+version = 1
+
+[[annotations]]
+path = [
+  "go.sum",
+  "release-please-config.json",
+  ".release-please-manifest.json",
+]
+SPDX-FileCopyrightText = "2023-2026 Tom Plant, Elias Elwyn, and contributors"
+SPDX-License-Identifier = "MIT"

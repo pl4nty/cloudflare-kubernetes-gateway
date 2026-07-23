@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors
+# SPDX-License-Identifier: MIT
+
 # Image URL to use all building/pushing image targets
 IMG ?= ghcr.io/pl4nty/cloudflare-kubernetes-gateway:latest
 

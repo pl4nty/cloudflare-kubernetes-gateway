@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors
+# SPDX-License-Identifier: MIT
+
 # Build the manager binary
 FROM docker.io/golang:1.26 AS builder
 ARG TARGETOS

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors
+# SPDX-License-Identifier: MIT
 resources:
 - manager.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1

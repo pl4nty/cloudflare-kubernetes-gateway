@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors
+# SPDX-License-Identifier: MIT
+
 # This patch adds the args to allow exposing the metrics endpoint securely
 - op: add
   path: /spec/template/spec/containers/0/args/0

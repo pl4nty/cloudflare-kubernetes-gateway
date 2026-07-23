@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023-2026 Tom Plant, Elias Elwyn, and contributors
+# SPDX-License-Identifier: MIT
 resources:
 # All RBAC will be applied under this service account in
 # the deployment namespace. You may comment out this resource
