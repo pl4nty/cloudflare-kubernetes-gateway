@@ -2,6 +2,14 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Changelog
 
+## [0.10.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.1...v0.10.2) (2026-07-23)
+
+
+### Bug Fixes
+
+* **deps:** update gateway api to v1.6.1 ([#354](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/354)) ([b7eccf4](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/b7eccf49ce38ce0160cfc91a08f0ba4e21c8cd6e))
+* **deps:** update module sigs.k8s.io/gateway-api/conformance to v1.6.1 ([#355](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/355)) ([b055117](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/b055117eaa2b75ce31b9070365daf632b97ffcb2))
+
 ## [0.10.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.0...v0.10.1) (2026-07-11)
 
 
