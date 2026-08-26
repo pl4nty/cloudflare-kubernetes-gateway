@@ -32,6 +32,12 @@ rules:
   - update
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+- apiGroups:
   - apps
   resources:
   - deployments
@@ -68,3 +74,11 @@ rules:
   verbs:
   - list
   - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes/status
+  verbs:
+  - get
+  - patch
+  - update

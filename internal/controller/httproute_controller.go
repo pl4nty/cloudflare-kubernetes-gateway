@@ -15,6 +15,9 @@ import (
 	"github.com/cloudflare/cloudflare-go/v7/dns"
 	"github.com/cloudflare/cloudflare-go/v7/zero_trust"
 	"github.com/cloudflare/cloudflare-go/v7/zones"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,7 +38,9 @@ type HTTPRouteReconciler struct {
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=list
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=list;watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
+// +kubebuilder:rbac:groups=core,resources=services,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -283,7 +288,144 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		logger.Info("Updated DNS records", "hostnames", hostnames)
 	}
 
+	if err == nil {
+		if statusErr := r.updateRouteStatus(ctx, target); statusErr != nil {
+			logger.Error(statusErr, "Failed to update HTTPRoute status")
+			return ctrl.Result{}, statusErr
+		}
+	}
+
 	return ctrl.Result{}, nil
+}
+
+// updateRouteStatus recomputes status.parents for the entries this controller
+// owns (matched by ControllerName) and writes them back to the HTTPRoute,
+// leaving any parent statuses owned by other controllers untouched. It sets
+// the standard "Accepted" and "ResolvedRefs" conditions per the Gateway API
+// spec so tooling (e.g. ArgoCD's health checks, `kubectl get httproute`,
+// gwctl) can observe whether the route was actually attached, instead of
+// status.parents staying permanently empty.
+func (r *HTTPRouteReconciler) updateRouteStatus(ctx context.Context, route *gatewayv1.HTTPRoute) error {
+	logger := log.FromContext(ctx)
+
+	ownedParents := map[string]gatewayv1.RouteParentStatus{}
+	for _, existing := range route.Status.Parents {
+		if existing.ControllerName == gatewayv1.GatewayController(controllerName) {
+			ownedParents[parentRefKey(route.Namespace, existing.ParentRef)] = existing
+		}
+	}
+
+	newParents := []gatewayv1.RouteParentStatus{}
+	for _, parentRef := range route.Spec.ParentRefs {
+		namespace := route.Namespace
+		if parentRef.Namespace != nil {
+			namespace = string(*parentRef.Namespace)
+		}
+
+		gateway := &gatewayv1.Gateway{}
+		if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: string(parentRef.Name)}, gateway); err != nil {
+			// Parent doesn't exist (or isn't visible to us); nothing for this
+			// controller to report.
+			continue
+		}
+
+		gatewayClass := &gatewayv1.GatewayClass{}
+		if err := r.Get(ctx, types.NamespacedName{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
+			continue
+		}
+		if gatewayClass.Spec.ControllerName != controllerName {
+			// A different controller owns this parent; don't touch its status.
+			continue
+		}
+
+		conditions := ownedParents[parentRefKey(route.Namespace, parentRef)].Conditions
+
+		meta.SetStatusCondition(&conditions, metav1.Condition{
+			Type:               string(gatewayv1.RouteConditionAccepted),
+			Status:             metav1.ConditionTrue,
+			ObservedGeneration: route.Generation,
+			Reason:             string(gatewayv1.RouteReasonAccepted),
+			Message:            "Route is accepted",
+		})
+
+		resolvedRefs := metav1.Condition{
+			Type:               string(gatewayv1.RouteConditionResolvedRefs),
+			Status:             metav1.ConditionTrue,
+			ObservedGeneration: route.Generation,
+			Reason:             string(gatewayv1.RouteReasonResolvedRefs),
+			Message:            "All backend references are resolved",
+		}
+		for _, rule := range route.Spec.Rules {
+			for _, backend := range rule.BackendRefs {
+				backendNamespace := route.Namespace
+				if backend.Namespace != nil {
+					backendNamespace = string(*backend.Namespace)
+				}
+				svc := &corev1.Service{}
+				if err := r.Get(ctx, types.NamespacedName{Namespace: backendNamespace, Name: string(backend.Name)}, svc); err != nil {
+					resolvedRefs.Status = metav1.ConditionFalse
+					resolvedRefs.Reason = string(gatewayv1.RouteReasonBackendNotFound)
+					resolvedRefs.Message = fmt.Sprintf("Service %s/%s not found", backendNamespace, backend.Name)
+				}
+			}
+		}
+		meta.SetStatusCondition(&conditions, resolvedRefs)
+
+		newParents = append(newParents, gatewayv1.RouteParentStatus{
+			ParentRef:      parentRef,
+			ControllerName: gatewayv1.GatewayController(controllerName),
+			Conditions:     conditions,
+		})
+	}
+
+	// Preserve status entries written by other controllers for other parentRefs.
+	for _, existing := range route.Status.Parents {
+		if existing.ControllerName != gatewayv1.GatewayController(controllerName) {
+			newParents = append(newParents, existing)
+		}
+	}
+
+	if routeParentsEqual(route.Status.Parents, newParents) {
+		return nil
+	}
+
+	route.Status.Parents = newParents
+	logger.Info("Updating HTTPRoute status", "parents", len(newParents))
+	return r.Status().Update(ctx, route)
+}
+
+func parentRefKey(routeNamespace string, ref gatewayv1.ParentReference) string {
+	namespace := routeNamespace
+	if ref.Namespace != nil {
+		namespace = string(*ref.Namespace)
+	}
+	return namespace + "/" + string(ref.Name)
+}
+
+func routeParentsEqual(a, b []gatewayv1.RouteParentStatus) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].ControllerName != b[i].ControllerName {
+			return false
+		}
+		if a[i].ParentRef.Name != b[i].ParentRef.Name {
+			return false
+		}
+		if len(a[i].Conditions) != len(b[i].Conditions) {
+			return false
+		}
+		for j := range a[i].Conditions {
+			if a[i].Conditions[j].Type != b[i].Conditions[j].Type ||
+				a[i].Conditions[j].Status != b[i].Conditions[j].Status ||
+				a[i].Conditions[j].Reason != b[i].Conditions[j].Reason ||
+				a[i].Conditions[j].Message != b[i].Conditions[j].Message {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // SetupWithManager sets up the controller with the Manager.
