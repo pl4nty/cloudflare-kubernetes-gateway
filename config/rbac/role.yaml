@@ -10,6 +10,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - services
   verbs:
   - get
   - list
@@ -31,12 +32,6 @@ rules:
   - list
   - update
   - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
 - apiGroups:
   - apps
   resources:
