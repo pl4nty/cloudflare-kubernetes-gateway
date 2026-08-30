@@ -4,7 +4,7 @@ module github.com/pl4nty/cloudflare-kubernetes-gateway
 
 go 1.26.0
 
-toolchain go1.26.6
+toolchain go1.27.0
 
 require (
 	dario.cat/mergo v1.0.2
