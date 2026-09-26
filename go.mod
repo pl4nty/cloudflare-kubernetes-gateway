@@ -10,7 +10,7 @@ require (
 	dario.cat/mergo v1.0.2
 	fortio.org/safecast v1.2.0
 	github.com/Jeffail/gabs/v2 v2.7.0
-	github.com/cloudflare/cloudflare-go/v7 v7.9.0
+	github.com/cloudflare/cloudflare-go/v7 v7.10.0
 	github.com/onsi/ginkgo/v2 v2.32.2
 	github.com/onsi/gomega v1.43.0
 	k8s.io/api v0.36.1
