@@ -5,6 +5,8 @@
   "extends": [
     "github>pl4nty/.github"
   ],
+  "automergeStrategy": "squash",
+  "ignoreTests": false,
   "postUpdateOptions": [
     "gomodTidy"
   ],
@@ -57,6 +59,47 @@
       ],
       "groupName": "Gateway API",
       "groupSlug": "kubernetes-sigs/gateway-api"
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/onsi/ginkgo/v2",
+        "github.com/onsi/gomega"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "actions/checkout",
+        "docker/login-action",
+        "securego/gosec",
+        "github/codeql-action"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "docker.io/cloudflare/cloudflared"
+      ],
+      "automerge": true
     }
   ]
 }
