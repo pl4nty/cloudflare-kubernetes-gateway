@@ -12,7 +12,7 @@ require (
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/cloudflare/cloudflare-go/v7 v7.10.0
 	github.com/onsi/ginkgo/v2 v2.33.0
-	github.com/onsi/gomega v1.43.1
+	github.com/onsi/gomega v1.44.0
 	k8s.io/api v0.36.1
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
