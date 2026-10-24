@@ -42,7 +42,7 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
-      - uses: goreleaser/goreleaser-action@v7.2.3
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           args: release --clean
         env:
