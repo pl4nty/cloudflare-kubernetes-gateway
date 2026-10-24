@@ -5,6 +5,9 @@
   "extends": [
     "github>pl4nty/.github"
   ],
+  "ignorePresets": [
+    "group:allNonMajor"
+  ],
   "automergeStrategy": "squash",
   "ignoreTests": false,
   "postUpdateOptions": [
