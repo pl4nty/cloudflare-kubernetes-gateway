@@ -2,6 +2,29 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Changelog
 
+## [0.10.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.1...v0.10.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* **deps:** update gateway api to v1.6.1 ([#354](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/354)) ([b7eccf4](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/b7eccf49ce38ce0160cfc91a08f0ba4e21c8cd6e))
+* **deps:** update gateway api to v1.6.2 ([#382](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/382)) ([8c1607c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/8c1607ca4bf670e82d20b0d2db55f6b19826a89b))
+* **deps:** update gateway api to v1.6.3 ([#407](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/407)) ([c91d1b3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/c91d1b342f2551ce457fb550103aaaa642fa33dd))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.10.0 ([#385](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/385)) ([cdee397](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/cdee3973cc3ff98b18032abcfb2618c130055d09))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.12.0 ([#397](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/397)) ([022eb23](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/022eb23c15776daee9ee7af1f06b1461a5ca9249))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.13.0 ([#417](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/417)) ([bc925e6](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/bc925e646f1fc3deb3e9a7193aabc20358c5b931))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.8.0 ([#366](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/366)) ([1b61c5f](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/1b61c5f2b8090abba3f24cec24a7f0e25ae0da5a))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.9.0 ([#376](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/376)) ([d12bc41](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/d12bc417ca3830d8e048a2e5a6705b4245ab2a29))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.32.2 ([#387](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/387)) ([152d43b](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/152d43b23c9c15dcf9c6a3993dc100cc4dcc3bfc))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.33.0 ([#392](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/392)) ([9d22c1d](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/9d22c1dedeb4c5950157b2f696343de2b502a198))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.33.1 ([#408](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/408)) ([fbb9326](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/fbb9326bd38a6ca017dd82edcd9a1d6874c8f929))
+* **deps:** update module github.com/onsi/gomega to v1.43.0 ([#379](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/379)) ([ec7be27](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/ec7be270a93c2b6a46037f8f0263f237986e48d2))
+* **deps:** update module github.com/onsi/gomega to v1.43.1 ([#391](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/391)) ([b215f31](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/b215f3103642324f259afbab82f1564347ea2821))
+* **deps:** update module github.com/onsi/gomega to v1.44.0 ([#398](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/398)) ([807d390](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/807d390f3c92b691a4706db83c0c8fe2f7d254a2))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.25.2 ([#386](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/386)) ([e7879c5](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/e7879c5178646282917bc6a7beb177feb003a490))
+* **deps:** update module sigs.k8s.io/gateway-api/conformance to v1.6.1 ([#355](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/355)) ([b055117](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/b055117eaa2b75ce31b9070365daf632b97ffcb2))
+* **deps:** update module sigs.k8s.io/gateway-api/conformance to v1.6.2 ([#383](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/383)) ([7e4f287](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/7e4f287b5f5e02db587123979add822f162d8a52))
+
 ## [0.10.1](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.0...v0.10.1) (2026-07-11)
 
 
