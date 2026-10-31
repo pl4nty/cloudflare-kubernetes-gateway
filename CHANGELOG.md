@@ -2,6 +2,13 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Changelog
 
+## [0.10.3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.2...v0.10.3) (2026-10-31)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.13.1 ([#423](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/423)) ([f10ae4c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f10ae4c5472781d220d9ac8260a4baaabd43e1c0))
+
 ## [0.10.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.1...v0.10.2) (2026-10-27)
 
 
