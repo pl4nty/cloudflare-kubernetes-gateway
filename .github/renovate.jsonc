@@ -3,11 +3,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "github>pl4nty/.github"
+    "config:best-practices",
+    ":semanticCommits"
   ],
-  "ignorePresets": [
-    "group:allNonMajor"
-  ],
+  "minimumReleaseAge": "7 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "osvVulnerabilityAlerts": true,
   "automergeStrategy": "squash",
   "ignoreTests": false,
   "postUpdateOptions": [
