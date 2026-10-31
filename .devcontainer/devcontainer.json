@@ -6,7 +6,7 @@
 {
 	"name": "cloudflare-kubernetes-gateway",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/go:1.26",
+	"image": "mcr.microsoft.com/devcontainers/go:1.27",
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:4": {},
 		"ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
