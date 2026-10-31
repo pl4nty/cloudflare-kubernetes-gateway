@@ -105,6 +105,31 @@
         "docker.io/cloudflare/cloudflared"
       ],
       "automerge": true
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "mcr.microsoft.com/devcontainers/go"
+      ],
+      "addLabels": [
+        "ci: no code changes"
+      ]
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "mcr.microsoft.com/devcontainers/go"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "automerge": true,
+      "ignoreTests": true
     }
   ]
 }
