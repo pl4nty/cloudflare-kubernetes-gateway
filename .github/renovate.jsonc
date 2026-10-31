@@ -78,6 +78,9 @@
         "patch"
       ],
       "matchCurrentVersion": "!/^0/",
+      "addLabels": [
+        "ci: automerge candidate"
+      ],
       "automerge": true
     },
     {
@@ -95,6 +98,9 @@
         "patch"
       ],
       "matchCurrentVersion": "!/^0/",
+      "addLabels": [
+        "ci: automerge candidate"
+      ],
       "automerge": true
     },
     {
@@ -103,6 +109,9 @@
       ],
       "matchPackageNames": [
         "docker.io/cloudflare/cloudflared"
+      ],
+      "addLabels": [
+        "ci: automerge candidate"
       ],
       "automerge": true
     },
@@ -127,6 +136,9 @@
       "matchUpdateTypes": [
         "minor",
         "patch"
+      ],
+      "addLabels": [
+        "ci: automerge candidate"
       ],
       "automerge": true,
       "ignoreTests": true
