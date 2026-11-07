@@ -60,6 +60,7 @@
       ],
       "matchPackageNames": [
         "sigs.k8s.io/gateway-api",
+        "sigs.k8s.io/gateway-api/conformance",
         "kubernetes-sigs/gateway-api"
       ],
       "groupName": "Gateway API",
