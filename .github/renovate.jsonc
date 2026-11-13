@@ -80,7 +80,7 @@
       ],
       "matchCurrentVersion": "!/^0/",
       "addLabels": [
-        "ci: automerge candidate"
+        "ci/automerge"
       ],
       "automerge": true
     },
@@ -101,7 +101,7 @@
       ],
       "matchCurrentVersion": "!/^0/",
       "addLabels": [
-        "ci: automerge candidate"
+        "ci/automerge"
       ],
       "automerge": true
     },
@@ -113,7 +113,7 @@
         "docker.io/cloudflare/cloudflared"
       ],
       "addLabels": [
-        "ci: automerge candidate"
+        "ci/automerge"
       ],
       "automerge": true
     },
@@ -125,7 +125,7 @@
         "mcr.microsoft.com/devcontainers/go"
       ],
       "addLabels": [
-        "ci: no code changes"
+        "ci/no-tests"
       ]
     },
     {
@@ -140,7 +140,7 @@
         "patch"
       ],
       "addLabels": [
-        "ci: automerge candidate"
+        "ci/automerge"
       ],
       "automerge": true,
       "ignoreTests": true
