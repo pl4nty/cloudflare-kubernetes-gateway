@@ -91,8 +91,9 @@
       "matchPackageNames": [
         "actions/checkout",
         "docker/login-action",
-        "securego/gosec",
-        "github/codeql-action"
+        "github/codeql-action",
+        "helm/kind-action",
+        "securego/gosec"
       ],
       "matchUpdateTypes": [
         "minor",
