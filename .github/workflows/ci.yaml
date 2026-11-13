@@ -11,7 +11,7 @@ on:
 jobs:
   scan:
     if: >-
-      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
+      !contains(github.event.pull_request.labels.*.name, 'ci/no-tests')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,7 +27,7 @@ jobs:
 
   test:
     if: >-
-      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
+      !contains(github.event.pull_request.labels.*.name, 'ci/no-tests')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -44,7 +44,7 @@ jobs:
 
   e2e:
     if: >-
-      !contains(github.event.pull_request.labels.*.name, 'ci: no code changes')
+      !contains(github.event.pull_request.labels.*.name, 'ci/no-tests')
     runs-on: ubuntu-latest
     permissions:
       contents: read
