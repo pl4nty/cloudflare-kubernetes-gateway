@@ -2,6 +2,17 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Changelog
 
+## [0.10.3](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.2...v0.10.3) (2026-11-17)
+
+
+### Bug Fixes
+
+* **deps:** update gateway api to v1.7.0 ([#432](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/432)) ([b2284de](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/b2284decdb8405731a6591fe4369b49ca9340934))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.13.1 ([#423](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/423)) ([f10ae4c](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/f10ae4c5472781d220d9ac8260a4baaabd43e1c0))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.14.0 ([#442](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/442)) ([266712d](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/266712d9bbec3dc815270e79f8aae93f6395ed6f))
+* **deps:** update module github.com/cloudflare/cloudflare-go/v7 to v7.15.0 ([#444](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/444)) ([ca8f0f2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/ca8f0f2007acb2d3d6d16a3fac050a4950f877bc))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.34.0 ([#435](https://github.com/pl4nty/cloudflare-kubernetes-gateway/issues/435)) ([506f29a](https://github.com/pl4nty/cloudflare-kubernetes-gateway/commit/506f29a4b2e3fe1af26b0a95a91d78d83fbfdf72))
+
 ## [0.10.2](https://github.com/pl4nty/cloudflare-kubernetes-gateway/compare/v0.10.1...v0.10.2) (2026-10-27)
 
 
