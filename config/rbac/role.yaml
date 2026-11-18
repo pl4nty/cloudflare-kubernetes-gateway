@@ -10,6 +10,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - services
   verbs:
   - get
   - list
@@ -68,3 +69,11 @@ rules:
   verbs:
   - list
   - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes/status
+  verbs:
+  - get
+  - patch
+  - update
