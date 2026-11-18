@@ -715,7 +715,6 @@ func (r *GatewayReconciler) reconcileDeployment(ctx context.Context, gateway *ga
 
 	found := &appsv1.Deployment{}
 	err := r.Get(ctx, types.NamespacedName{Name: gateway.Name, Namespace: gateway.Namespace}, found)
-	// TODO update existing deployment eg image changes
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new deployment
 		dep, err := r.deploymentForGateway(ctx, gateway)
@@ -770,7 +769,18 @@ func (r *GatewayReconciler) reconcileDeployment(ctx context.Context, gateway *ga
 			return ctrl.Result{}, err
 		}
 
-		if err := r.Update(ctx, dep); err != nil {
+		// Update the Deployment we fetched instead of the freshly built one, so that
+		// metadata set by other controllers (for example the
+		// deployment.kubernetes.io/revision annotation) is kept. Dropping it would
+		// bump metadata.generation on every reconcile and re-trigger this reconcile
+		// through the Deployment watch.
+		found.Spec = dep.Spec
+		if err := ctrl.SetControllerReference(gateway, found, r.Scheme); err != nil {
+			logger.Error(err, "Failed to set owner on existing Deployment")
+			return ctrl.Result{}, err
+		}
+
+		if err := r.Update(ctx, found); err != nil {
 			if strings.Contains(err.Error(), "apply your changes to the latest version and try again") {
 				logger.Info("Conflict when updating Deployment, retrying")
 				return ctrl.Result{Requeue: true}, nil
