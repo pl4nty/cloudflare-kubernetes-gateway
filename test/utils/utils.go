@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -103,33 +104,19 @@ func InstallCertManager() error {
 	return err
 }
 
-// LoadImageToKindClusterWithName loads a local docker image to the kind cluster.
-//
-// The image is exported for the host platform only. With Docker's containerd
-// image store, a pulled multi-platform image keeps its full index but only the
-// host platform's blobs, so `kind load docker-image` (which imports with
-// --all-platforms) fails with "content digest ... not found".
+// LoadImageToKindClusterWithName loads a local docker image to the kind cluster
 func LoadImageToKindClusterWithName(name string) error {
 	cluster := "kind"
 	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
 		cluster = v
 	}
-
-	archive, err := os.CreateTemp("", "kind-image-*.tar")
-	if err != nil {
-		return err
-	}
-	_ = archive.Close()
-	defer os.Remove(archive.Name()) //nolint:errcheck
-
-	cmd := exec.Command("docker", "save", "--platform", "linux/"+runtime.GOARCH,
-		"--output", archive.Name(), name)
+	archive := filepath.Join(GinkgoT().TempDir(), "image.tar")
+	cmd := exec.Command("docker", "save", "--platform", "linux/"+runtime.GOARCH, "-o", archive, name)
 	if _, err := Run(cmd); err != nil {
 		return err
 	}
-
-	cmd = exec.Command("kind", "load", "image-archive", archive.Name(), "--name", cluster)
-	_, err = Run(cmd)
+	cmd = exec.Command("kind", "load", "image-archive", archive, "--name", cluster)
+	_, err := Run(cmd)
 	return err
 }
 
