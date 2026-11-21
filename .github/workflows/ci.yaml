@@ -12,7 +12,7 @@ jobs:
   scan:
     if: >-
       !contains(github.event.pull_request.labels.*.name, 'ci/no-tests')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       security-events: write
@@ -28,7 +28,7 @@ jobs:
   test:
     if: >-
       !contains(github.event.pull_request.labels.*.name, 'ci/no-tests')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       checks: write
@@ -45,7 +45,7 @@ jobs:
   e2e:
     if: >-
       !contains(github.event.pull_request.labels.*.name, 'ci/no-tests')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       checks: write

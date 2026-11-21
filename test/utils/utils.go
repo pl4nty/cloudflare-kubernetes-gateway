@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive,staticcheck
@@ -108,8 +110,14 @@ func LoadImageToKindClusterWithName(name string) error {
 	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
 		cluster = v
 	}
-	kindOptions := []string{"load", "docker-image", name, "--name", cluster}
-	cmd := exec.Command("kind", kindOptions...)
+	archive := filepath.Join(GinkgoT().TempDir(), "image.tar")
+	// #nosec G204 -- args come from the test environment
+	cmd := exec.Command("docker", "save", "--platform", "linux/"+runtime.GOARCH, "-o", archive, name)
+	if _, err := Run(cmd); err != nil {
+		return err
+	}
+	// #nosec G204 -- args come from the test environment
+	cmd = exec.Command("kind", "load", "image-archive", archive, "--name", cluster)
 	_, err := Run(cmd)
 	return err
 }
