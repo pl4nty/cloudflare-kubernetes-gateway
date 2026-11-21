@@ -111,10 +111,12 @@ func LoadImageToKindClusterWithName(name string) error {
 		cluster = v
 	}
 	archive := filepath.Join(GinkgoT().TempDir(), "image.tar")
+	// #nosec G204 -- args come from the test environment
 	cmd := exec.Command("docker", "save", "--platform", "linux/"+runtime.GOARCH, "-o", archive, name)
 	if _, err := Run(cmd); err != nil {
 		return err
 	}
+	// #nosec G204 -- args come from the test environment
 	cmd = exec.Command("kind", "load", "image-archive", archive, "--name", cluster)
 	_, err := Run(cmd)
 	return err
