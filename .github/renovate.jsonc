@@ -92,6 +92,7 @@
       ],
       "matchPackageNames": [
         "actions/checkout",
+        "actions/setup-go",
         "docker/login-action",
         "github/codeql-action",
         "helm/kind-action",
