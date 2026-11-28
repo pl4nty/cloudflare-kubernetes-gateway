@@ -15,6 +15,9 @@ import (
 	"github.com/cloudflare/cloudflare-go/v7/dns"
 	"github.com/cloudflare/cloudflare-go/v7/zero_trust"
 	"github.com/cloudflare/cloudflare-go/v7/zones"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,9 +35,15 @@ type HTTPRouteReconciler struct {
 	Namespace string
 }
 
+type routeParentGateway struct {
+	parentRef *gatewayv1.ParentReference
+	gateway   gatewayv1.Gateway
+}
+
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=list
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=list;watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes/status,verbs=update
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -49,34 +58,57 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// TODO delete DNS records. load all hostnames via tunnel ID in comment? but can't get DNS zone...
 	target := &gatewayv1.HTTPRoute{}
-	gateways := []gatewayv1.Gateway{}
+	parentGateways := []routeParentGateway{}
 	hostnames := []gatewayv1.Hostname{}
 	err := r.Get(ctx, req.NamespacedName, target)
-	if err == nil {
+	targetFound := err == nil
+	if targetFound {
 		for _, parentRef := range target.Spec.ParentRefs {
+			if err := validateHTTPRouteGatewayParentRef(parentRef); err != nil {
+				logger.Info("HTTPRoute parentRef validation failed", "parentRef", parentRef, "error", err)
+				result, statusErr := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, parentRef, metav1.ConditionFalse, gatewayv1.RouteReasonNoMatchingParent, fmt.Sprintf("ParentRef validation failed: %v", err))
+				if statusErr != nil || result.Requeue || result.RequeueAfter != 0 {
+					return result, statusErr
+				}
+				return ctrl.Result{}, nil
+			}
+
 			namespace := target.Namespace
 			if parentRef.Namespace != nil {
 				namespace = string(*parentRef.Namespace)
 			}
 			gateway := &gatewayv1.Gateway{}
-			if err := r.Get(ctx, types.NamespacedName{
+			gatewayRef := types.NamespacedName{
 				Namespace: namespace,
 				Name:      string(parentRef.Name),
-			}, gateway); err != nil {
+			}
+			if err := r.Get(ctx, gatewayRef, gateway); err != nil {
 				logger.Error(err, "Failed to get Gateway")
+				result, statusErr := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, parentRef, metav1.ConditionFalse, gatewayv1.RouteReasonNoMatchingParent, fmt.Sprintf("No matching parent Gateway %s: %v", gatewayRef.String(), err))
+				if statusErr != nil || result.Requeue || result.RequeueAfter != 0 {
+					return result, statusErr
+				}
 				return ctrl.Result{}, err
 			}
-			gateways = append(gateways, *gateway)
+			parentRef := parentRef
+			parentGateways = append(parentGateways, routeParentGateway{parentRef: &parentRef, gateway: *gateway})
 		}
 
 		hostnames = target.Spec.Hostnames
 	} else {
+		if !apierrors.IsNotFound(err) {
+			logger.Error(err, "Failed to get HTTPRoute")
+			return ctrl.Result{}, err
+		}
+
 		gatewayList := &gatewayv1.GatewayList{}
 		if err := r.List(ctx, gatewayList); err != nil {
 			logger.Error(err, "Failed to list Gateways")
 			return ctrl.Result{}, err
 		}
-		gateways = gatewayList.Items
+		for _, gateway := range gatewayList.Items {
+			parentGateways = append(parentGateways, routeParentGateway{gateway: gateway})
+		}
 	}
 
 	routes := &gatewayv1.HTTPRouteList{}
@@ -85,7 +117,9 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	for _, gateway := range gateways {
+	for _, parentGateway := range parentGateways {
+		gateway := parentGateway.gateway
+
 		// check target is in scope
 		gatewayClass := &gatewayv1.GatewayClass{}
 		if err := r.Get(ctx, types.NamespacedName{
@@ -95,7 +129,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
-		if gatewayClass.Spec.ControllerName != "github.com/pl4nty/cloudflare-kubernetes-gateway" {
+		if gatewayClass.Spec.ControllerName != controllerName {
 			continue
 		}
 
@@ -281,6 +315,13 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 		}
 		logger.Info("Updated DNS records", "hostnames", hostnames)
+
+		if targetFound && parentGateway.parentRef != nil {
+			result, err := r.updateHTTPRouteAcceptedStatus(ctx, req.NamespacedName, *parentGateway.parentRef, metav1.ConditionTrue, gatewayv1.RouteReasonAccepted, "Successfully reconciled with Cloudflare")
+			if err != nil || result.Requeue || result.RequeueAfter != 0 {
+				return result, err
+			}
+		}
 	}
 
 	return ctrl.Result{}, nil
@@ -315,4 +356,167 @@ func FindZoneID(hostname string, ctx context.Context, api *cloudflare.Client, ac
 	err := errors.New("failed to discover DNS zone")
 	logger.Error(err, "Failed to discover parent DNS zone. Ensure Zone.DNS permission is configured", "hostname", hostname)
 	return "", err
+}
+
+func validateHTTPRouteGatewayParentRef(parentRef gatewayv1.ParentReference) error {
+	if parentRefGroup(parentRef) != "gateway.networking.k8s.io" {
+		return fmt.Errorf("unsupported parentRef group %s", parentRefGroup(parentRef))
+	}
+	if parentRefKind(parentRef) != "Gateway" {
+		return fmt.Errorf("unsupported parentRef kind %s", parentRefKind(parentRef))
+	}
+	return nil
+}
+
+func (r *HTTPRouteReconciler) updateHTTPRouteAcceptedStatus(ctx context.Context, routeRef types.NamespacedName, parentRef gatewayv1.ParentReference, status metav1.ConditionStatus, reason gatewayv1.RouteConditionReason, message string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	route := &gatewayv1.HTTPRoute{}
+	if err := r.Get(ctx, routeRef, route); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("HTTPRoute resource not found. Ignoring status update")
+			return ctrl.Result{}, nil
+		}
+		logger.Error(err, "Failed to re-fetch HTTPRoute")
+		return ctrl.Result{}, err
+	}
+
+	if !setHTTPRouteParentStatusCondition(route, parentRef, metav1.Condition{
+		Type:               string(gatewayv1.RouteConditionAccepted),
+		Status:             status,
+		Reason:             string(reason),
+		ObservedGeneration: route.Generation,
+		Message:            message,
+	}) {
+		return ctrl.Result{}, nil
+	}
+
+	if err := r.Status().Update(ctx, route); err != nil {
+		if apierrors.IsConflict(err) {
+			logger.Info("Conflict when updating HTTPRoute status, retrying")
+			return ctrl.Result{Requeue: true}, nil
+		}
+		logger.Error(err, "Failed to update HTTPRoute status")
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func setHTTPRouteParentStatusCondition(route *gatewayv1.HTTPRoute, parentRef gatewayv1.ParentReference, condition metav1.Condition) bool {
+	normalizedParentRef := normalizeHTTPRouteParentRef(parentRef, route.Namespace)
+
+	for i := range route.Status.Parents {
+		parentStatus := &route.Status.Parents[i]
+		if parentStatus.ControllerName == gatewayv1.GatewayController(controllerName) && parentRefsEqual(normalizeHTTPRouteParentRef(parentStatus.ParentRef, route.Namespace), normalizedParentRef) {
+			parentRefChanged := !parentRefsExactlyEqual(parentStatus.ParentRef, normalizedParentRef)
+			parentStatus.ParentRef = normalizedParentRef
+			if !parentRefChanged && statusConditionMatches(meta.FindStatusCondition(parentStatus.Conditions, condition.Type), condition) {
+				return false
+			}
+			meta.SetStatusCondition(&parentStatus.Conditions, condition)
+			return true
+		}
+	}
+
+	parentStatus := gatewayv1.RouteParentStatus{
+		ParentRef:      normalizedParentRef,
+		ControllerName: gatewayv1.GatewayController(controllerName),
+		Conditions:     []metav1.Condition{},
+	}
+	meta.SetStatusCondition(&parentStatus.Conditions, condition)
+	route.Status.Parents = append(route.Status.Parents, parentStatus)
+	return true
+}
+
+func normalizeHTTPRouteParentRef(parentRef gatewayv1.ParentReference, defaultNamespace string) gatewayv1.ParentReference {
+	if parentRef.Group == nil {
+		group := gatewayv1.Group("gateway.networking.k8s.io")
+		parentRef.Group = &group
+	}
+	if parentRef.Kind == nil {
+		kind := gatewayv1.Kind("Gateway")
+		parentRef.Kind = &kind
+	}
+	if parentRef.Namespace == nil && defaultNamespace != "" {
+		namespace := gatewayv1.Namespace(defaultNamespace)
+		parentRef.Namespace = &namespace
+	}
+	return parentRef
+}
+
+func statusConditionMatches(existing *metav1.Condition, condition metav1.Condition) bool {
+	return existing != nil &&
+		existing.Type == condition.Type &&
+		existing.Status == condition.Status &&
+		existing.Reason == condition.Reason &&
+		existing.ObservedGeneration == condition.ObservedGeneration &&
+		existing.Message == condition.Message
+}
+
+func parentRefsEqual(left, right gatewayv1.ParentReference) bool {
+	return parentRefGroup(left) == parentRefGroup(right) &&
+		parentRefKind(left) == parentRefKind(right) &&
+		namespacePtrEqual(left.Namespace, right.Namespace) &&
+		left.Name == right.Name &&
+		sectionNamePtrEqual(left.SectionName, right.SectionName) &&
+		portNumberPtrEqual(left.Port, right.Port)
+}
+
+func parentRefsExactlyEqual(left, right gatewayv1.ParentReference) bool {
+	return groupPtrEqual(left.Group, right.Group) &&
+		kindPtrEqual(left.Kind, right.Kind) &&
+		namespacePtrEqual(left.Namespace, right.Namespace) &&
+		left.Name == right.Name &&
+		sectionNamePtrEqual(left.SectionName, right.SectionName) &&
+		portNumberPtrEqual(left.Port, right.Port)
+}
+
+func parentRefGroup(parentRef gatewayv1.ParentReference) string {
+	if parentRef.Group == nil {
+		return "gateway.networking.k8s.io"
+	}
+	return string(*parentRef.Group)
+}
+
+func parentRefKind(parentRef gatewayv1.ParentReference) string {
+	if parentRef.Kind == nil {
+		return "Gateway"
+	}
+	return string(*parentRef.Kind)
+}
+
+func groupPtrEqual(left, right *gatewayv1.Group) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
+}
+
+func kindPtrEqual(left, right *gatewayv1.Kind) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
+}
+
+func namespacePtrEqual(left, right *gatewayv1.Namespace) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
+}
+
+func sectionNamePtrEqual(left, right *gatewayv1.SectionName) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
+}
+
+func portNumberPtrEqual(left, right *gatewayv1.PortNumber) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
 }
